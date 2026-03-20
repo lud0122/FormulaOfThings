@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Formula Of Things - Canvas2D</title>
+    <link rel="stylesheet" href="./styles/main.css" />
+  </head>
+  <body>
+    <main class="layout">
+      <section class="viewer">
+        <div>
+          <h2>公式生成结果</h2>
+          <canvas id="formula-canvas" width="642" height="854"></canvas>
+        </div>
+        <div>
+          <h2>参考图</h2>
+          <img id="reference-image" src="./ideal/ideal_1.PNG" alt="参考图" />
+        </div>
+      </section>
+      <section class="panel">
+        <h2>参数面板</h2>
+        <div id="control-panel"></div>
+        <div class="actions">
+          <button id="fit-btn">自动拟合</button>
+          <button id="export-png-btn">导出 PNG</button>
+          <button id="export-params-btn">导出参数</button>
+          <input id="import-params-input" type="file" accept="application/json" />
+        </div>
+        <pre id="status">idle</pre>
+      </section>
+    </main>
+    <script type="module" src="./src/app/main.js"></script>
+  </body>
+</html>
