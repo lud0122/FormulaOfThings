@@ -7,13 +7,18 @@ import { scoreFeatures } from '../fit/score.js'
 import { optimizeParams } from '../fit/optimizer.js'
 import { mountControlPanel } from '../ui/controlPanel.js'
 import { exportCanvasToPng, exportParams, importParamsFromFile } from '../io/exporter.js'
+import { dft2d, extractTopFrequencies, generateFourierFormula } from '../analysis/fourier.js'
+import { formatParametricFormula, renderFormulaToElement } from '../analysis/formulaDisplay.js'
+import { renderSpectrumToCanvas, drawFrequencyMarkers } from '../analysis/spectrumRenderer.js'
+import { animateFourierBuild, animateOriginalBuild } from '../render/animationRenderer.js'
 
 const REFERENCE_PATH = './ideal/ideal_1.PNG'
-
 export const createAppState = () => ({
   status: 'idle',
   hasReference: false,
-  params: { ...defaultParams }
+  params: { ...defaultParams },
+  fourierData: null,
+  isAnimating: false
 })
 
 const grayscaleFromRgba = (rgba) => {

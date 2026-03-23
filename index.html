@@ -18,6 +18,7 @@
           <img id="reference-image" src="./ideal/ideal_1.PNG" alt="参考图" />
         </div>
       </section>
+
       <section class="panel">
         <h2>参数面板</h2>
         <div id="control-panel"></div>
@@ -28,6 +29,38 @@
           <input id="import-params-input" type="file" accept="application/json" />
         </div>
         <pre id="status">idle</pre>
+      </section>
+
+      <section class="formula-display">
+        <h2>原始算法公式</h2>
+        <pre id="formula-text"></pre>
+      </section>
+
+      <section class="fourier-section">
+        <h2>傅里叶分析</h2>
+        <div class="fourier-controls">
+          <button id="fourier-analyze-btn">分析频谱</button>
+          <button id="fourier-animate-btn">播放傅里叶重建</button>
+          <button id="original-animate-btn">播放原算法绘制</button>
+          <select id="animation-mode">
+            <option value="sequential">逐步累加</option>
+            <option value="smooth">平滑过渡</option>
+          </select>
+        </div>
+        <div class="fourier-results" style="display:none;">
+          <div>
+            <h3>频谱图</h3>
+            <canvas id="spectrum-canvas" width="256" height="256"></canvas>
+          </div>
+          <div>
+            <h3>傅里叶重建 (8项)</h3>
+            <canvas id="fourier-canvas" width="256" height="256"></canvas>
+          </div>
+          <div class="fourier-formula">
+            <h3>傅里叶级数公式</h3>
+            <pre id="fourier-formula-text"></pre>
+          </div>
+        </div>
       </section>
     </main>
     <script type="module" src="./src/app/main.js"></script>

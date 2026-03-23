@@ -14,16 +14,13 @@ const relDiff = (a, b) => {
 }
 
 export const scoreFeatures = (target, cand) => {
-  const wHist = 0.35
-  const wRadial = 0.35
-  const wOrient = 0.2
-  const wEdge = 0.1
+  const dHist = l1(target.hist, cand.hist)
+  const dRadial = l1(target.radialProfile, cand.radialProfile)
+  const dOrient = l1(target.orientationBins, cand.orientationBins)
+  const dEdge = relDiff(target.edgeEnergy, cand.edgeEnergy)
+  const dGrid = l1(target.coarseGridProfile ?? [], cand.coarseGridProfile ?? [])
 
-  const d =
-    wHist * l1(target.hist, cand.hist) +
-    wRadial * l1(target.radialProfile, cand.radialProfile) +
-    wOrient * l1(target.orientationBins, cand.orientationBins) +
-    wEdge * relDiff(target.edgeEnergy, cand.edgeEnergy)
+  const d = 0.2 * dHist + 0.2 * dRadial + 0.15 * dOrient + 0.15 * dEdge + 0.3 * dGrid
 
   return Math.max(0, Math.min(1, 1 - d))
 }
