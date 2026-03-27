@@ -1,0 +1,392 @@
+/* 傅里叶轮圆动画系统专用样式 */
+
+/* 布局系统 */
+.fourier-layout {
+ display: grid;
+ grid-template-columns: 280px 1fr 280px;
+ gap: 16px;
+ padding: 16px;
+ min-height: calc(100vh - 80px);
+}
+
+/* 头部 */
+.app-header {
+ background: #1a1d24;
+ border-bottom: 1px solid #2b3240;
+ padding: 16px 24px;
+ text-align: center;
+}
+
+.app-header h1 {
+ margin: 0;
+ font-size: 24px;
+ color: #4d79ff;
+}
+
+.app-header .subtitle {
+ margin: 8px 0 0;
+ font-size: 14px;
+ color: #9fb0cc;
+}
+
+/* 侧边栏通用样式 */
+.control-sidebar,
+.info-sidebar {
+ background: #161a22;
+ border: 1px solid #2b3240;
+ border-radius: 12px;
+ padding: 16px;
+ overflow-y: auto;
+ max-height: calc(100vh - 120px);
+}
+
+.control-sidebar h2,
+.info-sidebar h2 {
+ margin: 0 0 12px;
+ font-size: 14px;
+ color: #9fb0cc;
+ text-transform: uppercase;
+ letter-spacing: 0.5px;
+}
+
+/* 上传区域 */
+.upload-section {
+ margin-bottom: 16px;
+}
+
+.upload-zone {
+ border: 2px dashed #3d4754;
+ border-radius: 8px;
+ padding: 24px;
+ text-align: center;
+ cursor: pointer;
+ transition: all 0.2s;
+}
+
+.upload-zone:hover {
+ border-color: #4d79ff;
+ background: rgba(77, 121, 255, 0.05);
+}
+
+.upload-zone.dragover {
+ border-color: #4d79ff;
+ background: rgba(77, 121, 255, 0.1);
+}
+
+.upload-placeholder p {
+ margin: 4px 0;
+ color: #9fb0cc;
+}
+
+.upload-placeholder .upload-hint {
+ font-size: 12px;
+ color: #6b7a90;
+}
+
+#preview-image {
+ width: 100%;
+ max-height: 150px;
+ object-fit: contain;
+ border-radius: 4px;
+}
+
+/* 轮廓预览 */
+.contour-preview {
+ margin-bottom: 16px;
+}
+
+.contour-preview h2 {
+ margin-bottom: 8px;
+}
+
+#contour-canvas {
+ width: 100%;
+ background: #0f1115;
+ border-radius: 8px;
+}
+
+.threshold-controls {
+ margin-top: 12px;
+}
+
+.threshold-controls label {
+ display: block;
+ margin-bottom: 8px;
+ font-size: 12px;
+ color: #9fb0cc;
+}
+
+.threshold-controls input[type='range'] {
+ width: 100%;
+ margin-top: 4px;
+}
+
+/* 动画控制 */
+.animation-controls {
+ margin-bottom: 16px;
+}
+
+.control-buttons {
+ display: grid;
+ grid-template-columns: 1fr 1fr;
+ gap: 8px;
+ margin-bottom: 12px;
+}
+
+.speed-control,
+.progress-control {
+ margin-bottom: 12px;
+}
+
+.speed-control label,
+.progress-control label {
+ display: block;
+ font-size: 12px;
+ color: #9fb0cc;
+ margin-bottom: 4px;
+}
+
+#speed-select {
+ width: 100%;
+ padding: 8px;
+ background: #1a1d24;
+ border: 1px solid #3d4754;
+ border-radius: 6px;
+ color: #eceff4;
+}
+
+#progress-bar {
+ width: 100%;
+}
+
+.status-display {
+ background: #1a1d24;
+ border-radius: 6px;
+ padding: 8px 12px;
+ font-size: 12px;
+ color: #9fb0cc;
+ text-align: center;
+ min-height: 32px;
+ display: flex;
+ align-items: center;
+ justify-content: center;
+}
+
+.status-display.processing {
+ color: #f0a94e;
+}
+
+.status-display.ready {
+ color: #4caf50;
+}
+
+.status-display.error {
+ color: #ff6b6b;
+}
+
+/* 导出面板 */
+.export-section {
+ margin-top: 16px;
+}
+
+.export-buttons {
+ display: grid;
+ grid-template-columns: 1fr 1fr;
+ gap: 8px;
+}
+
+.export-buttons button {
+ padding: 8px 12px;
+ font-size: 12px;
+}
+
+/* 动画查看区 */
+.animation-viewer {
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ background: #0f1115;
+ border: 1px solid #2b3240;
+ border-radius: 12px;
+ overflow: hidden;
+}
+
+.canvas-container {
+ position: relative;
+ width: 100%;
+ height: 100%;
+ display: flex;
+ align-items: center;
+ justify-content: center;
+}
+
+#animation-canvas {
+ max-width: 100%;
+ max-height: 100%;
+ background: #0f1115;
+}
+
+/* 公式显示区 */
+.formula-section {
+ margin-bottom: 16px;
+}
+
+.formula-display {
+ background: #1a1d24;
+ border-radius: 8px;
+ padding: 12px;
+ margin-bottom: 8px;
+}
+
+.formula-eq {
+ margin: 4px 0;
+ font-family: 'Courier New', monospace;
+ font-size: 13px;
+ color: #eceff4;
+ line-height: 1.6;
+}
+
+#copy-formula-btn {
+ width: 100%;
+ padding: 8px;
+ font-size: 12px;
+}
+
+/* 参数表 */
+.parameter-section {
+ margin-bottom: 16px;
+}
+
+.parameter-table-container {
+ max-height: 300px;
+ overflow-y: auto;
+ border: 1px solid #2b3240;
+ border-radius: 8px;
+}
+
+.parameter-table {
+ width: 100%;
+ border-collapse: collapse;
+ font-size: 12px;
+}
+
+.parameter-table th,
+.parameter-table td {
+ padding: 8px 6px;
+ text-align: center;
+ border-bottom: 1px solid #2b3240;
+}
+
+.parameter-table th {
+ background: #1a1d24;
+ color: #9fb0cc;
+ font-weight: 500;
+ position: sticky;
+ top: 0;
+}
+
+.parameter-table td {
+ color: #eceff4;
+}
+
+.parameter-table tr.high-energy {
+ background: rgba(77, 121, 255, 0.1);
+}
+
+.parameter-table tr:hover {
+ background: rgba(77, 121, 255, 0.05);
+}
+
+/* 统计信息 */
+.stats-section {
+ margin-top: 16px;
+}
+
+.stats-grid {
+ display: grid;
+ gap: 8px;
+}
+
+.stat-item {
+ display: flex;
+ justify-content: space-between;
+ align-items: center;
+ padding: 10px 12px;
+ background: #1a1d24;
+ border-radius: 6px;
+}
+
+.stat-label {
+ font-size: 12px;
+ color: #9fb0cc;
+}
+
+.stat-value {
+ font-size: 14px;
+ font-weight: 600;
+ color: #4d79ff;
+}
+
+/* 按钮样式 */
+.btn-primary {
+ background: #4d79ff;
+ transition: background 0.2s;
+}
+
+.btn-primary:hover {
+ background: #5a85ff;
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+ .fourier-layout {
+ grid-template-columns: 260px 1fr 260px;
+ }
+}
+
+@media (max-width: 900px) {
+ .fourier-layout {
+ grid-template-columns: 1fr;
+ grid-template-rows: auto 1fr auto;
+ }
+
+ .control-sidebar,
+ .info-sidebar {
+ max-height: none;
+ }
+
+ .animation-viewer {
+ min-height: 400px;
+ }
+}
+
+/* 隐藏状态处理 */
+[hidden] {
+ display: none !important;
+}
+
+/* 滚动条美化 */
+.control-sidebar::-webkit-scrollbar,
+.info-sidebar::-webkit-scrollbar,
+.parameter-table-container::-webkit-scrollbar {
+ width: 6px;
+}
+
+.control-sidebar::-webkit-scrollbar-track,
+.info-sidebar::-webkit-scrollbar-track,
+.parameter-table-container::-webkit-scrollbar-track {
+ background: #1a1d24;
+}
+
+.control-sidebar::-webkit-scrollbar-thumb,
+.info-sidebar::-webkit-scrollbar-thumb,
+.parameter-table-container::-webkit-scrollbar-thumb {
+ background: #3d4754;
+ border-radius: 3px;
+}
+
+.control-sidebar::-webkit-scrollbar-thumb:hover,
+.info-sidebar::-webkit-scrollbar-thumb:hover,
+.parameter-table-container::-webkit-scrollbar-thumb:hover {
+ background: #4d79ff;
+}
