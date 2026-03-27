@@ -2,56 +2,73 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> 项目目标：提供从轮廓图像生成傅里叶轮圆动画（Epicycles）的完整解决方案
+
 ## 仓库现状
 
-- `main` 分支当前主要保存设计与实现文档：
-  - `docs/superpowers/specs/2026-03-20-formula-image-design.md`
-  - `docs/superpowers/plans/2026-03-20-formula-image-implementation.md`
-  - `ideal/ideal_1.PNG`（参考图）
-- 可运行实现目前在工作树 `feat-formula-canvas-generator` 中（路径：`.worktrees/feat-formula-canvas-generator/`）。后续如果切到该分支，代码结构与命令按下文执行。
+- `main` 分支已包含双功能实现：
+  - **傅里叶轮圆动画系统**（新增）- 详见 `docs/superpowers/specs/2026-03-25-fourier-epicycle-design.md`
+  - **Canvas2D 公式拟合管线**（原功能）- 详见 `docs/superpowers/specs/2026-03-20-formula-image-design.md`
+- 参考图：`ideal/ideal_1.PNG`
+- 工作树（旧）：`.worktrees/feat-formula-canvas-generator/`（仅文档参考）
 
-## 常用命令（基于实现分支）
+## 快速命令
 
 在实现目录（项目根）执行：
 
-- 安装依赖：
-  - `npm install`
-- 运行全部测试：
-  - `npm test`
-  - 等价：`node --test tests/**/*.test.js`
-- 运行单个测试文件：
-  - `node --test tests/fit/score.test.js`
-  - `node --test tests/integration.pipeline.test.js`
-- 启动本地静态服务：
-  - `npm run serve`
-  - 打开 `http://localhost:4173`
-- 备用测试入口脚本：
-  - `node scripts/run-tests.mjs`
+```bash
+# 安装依赖
+npm install
 
-## 架构总览（Canvas2D 公式拟合管线）
+# 运行全部测试
+npm test
 
-整体是“参考图特征 → 公式渲染 → 相似度评分 → 参数搜索 → 实时交互”的闭环：
+# 运行单个测试文件
+node --test tests/fit/score.test.js
+node --test tests/image-processor/detector.test.js
+node --test tests/fourier-analyzer/dft.test.js
 
-1. **应用编排层**（`src/app/main.js`）
-   - 负责启动流程、状态管理、事件绑定与拟合主循环。
-   - 组织 `loadReferenceImageData → extractFeaturesFromGray → optimizeParams → renderToBuffer` 的执行链。
+# 启动本地静态服务
+npm run serve
+```
 
-2. **公式层**（`src/formula/*`）
-   - `params.js`：参数 schema（范围、步进、默认值、分组）与 `clampParams`。
-   - `model.js`：核心可解释公式：`sampleIntensity`（径向基 + 极坐标波 + 噪声）与 `toneMap`（强度到 RGBA 映射）。
+访问 `http://localhost:4173`
 
-3. **渲染层**（`src/render/canvasRenderer.js`）
-   - 纯函数 `renderToBuffer`，将参数化公式采样成 `Uint8ClampedArray`，由 app 层写入 Canvas。
+## 双功能架构总览
 
-4. **拟合层**（`src/fit/*`）
-   - `extractFeatures.js`：从灰度图提取直方图、径向分布、方向分布、边缘能量。
-   - `score.js`：按加权距离计算候选与目标相似度（0~1）。
-   - `optimizer.js`：随机重启 + 局部扰动搜索最优参数。
+### 功能1：傅里叶轮圆动画系统（Fourier Epicycles）
 
-5. **I/O 与交互层**
-   - `src/io/referenceLoader.js`：加载参考图并转灰度。
-   - `src/io/exporter.js`：导出 PNG、导出/导入参数 JSON。
-   - `src/ui/controlPanel.js`：基于 schema 动态生成参数面板并回调更新。
+从用户上传的图像 → 提取轮廓 → 傅里叶分析 → 轮圆动画
+
+```
+用户上传图像
+    ↓
+图像类型检测（detector.js）
+    ↓
+轮廓提取：
+  ├─ 轮廓图：直接二值化 → 边界追踪
+  └─ 复杂图：Canny边缘检测 → 边界追踪
+    ↓
+傅里叶级数拟合（dft.js + adaptive-selector.js）
+    ↓
+轮圆动画渲染（epicycle-renderer.js）
+    ↓
+交互控制（animation-controls.js）
+```
+
+**核心模块：**
+- `src/image-processor/*` - 图像处理（检测器、边缘检测、边界追踪、阈值UI）
+- `src/fourier-analyzer/*` - 傅里叶分析（DFT、自适应选择、公式生成）
+- `src/renderer/*` - 动画渲染（轮圆渲染、动画控制）
+
+### 功能2：Canvas2D 公式拟合管线（Formula Fitting）
+
+“参考图特征 → 公式渲染 → 相似度评分 → 参数搜索 → 实时交互”
+
+**核心模块：**
+- `src/formula/*` - 参数schema和数学模型
+- `src/render/canvasRenderer.js` - 公式到像素的渲染
+- `src/fit/*` - 特征提取、评分、优化器
 
 ## 页面与入口
 
@@ -61,16 +78,52 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 测试组织
 
-- 使用 Node 内置测试框架 `node:test`。
-- 测试目录按模块分层：
-  - `tests/formula/*.test.js`
-  - `tests/fit/*.test.js`
-  - `tests/render/*.test.js`
-  - `tests/ui/*.test.js`
-  - `tests/integration.pipeline.test.js`
+- **框架**：Node 内置测试框架 `node:test`
+- **统计**：当前共 170+ 个测试，全部通过
+
+### 测试目录结构
+```
+tests/
+├── image-processor/    # 图像处理测试
+│   ├── detector.test.js
+│   ├── edge-detector.test.js
+│   ├── contour-tracer.test.js
+│   └── threshold-ui.test.js
+├── fourier-analyzer/   # 傅里叶分析测试
+│   ├── dft.test.js
+│   ├── adaptive-selector.test.js
+│   └── formula-generator.test.js
+├── renderer/          # 渲染测试
+│   ├── epicycle-renderer.test.js
+│   └── animation-controls.test.js
+├── formula/           # 公式层测试
+│   └── model.test.js
+├── fit/               # 拟合层测试
+│   ├── extractFeatures.test.js
+│   ├── optimizer.test.js
+│   └── score.test.js
+├── ui/                # UI测试
+│   ├── controlPanel.test.js
+│   └── export-panel.test.js
+└── integration.pipeline.test.js  # 集成测试
+```
+
+## 文档索引
+
+### 设计文档
+- [傅里叶轮圆动画系统设计说明](./docs/superpowers/specs/2026-03-25-fourier-epicycle-design.md)
+- [Canvas2D公式拟合设计说明](./docs/superpowers/specs/2026-03-20-formula-image-design.md)
+
+### 实施计划
+- [傅里叶轮圆动画实施计划](./docs/superpowers/plans/2026-03-26-fourier-epicycle-implementation.md)
+- [公式拟合实施计划](./docs/superpowers/plans/2026-03-20-formula-image-implementation.md)
+
+### 使用文档
+- [项目README](./README.md) - 用户指南和API文档
 
 ## 部署
 
-- GitHub Pages 工作流：`.github/workflows/pages.yml`
-- 触发条件：push 到 `main` 或手动 `workflow_dispatch`
-- 当前配置直接上传仓库根目录作为 Pages artifact。
+- **GitHub Pages 工作流**：`.github/workflows/pages.yml`
+- **触发条件**：push 到 `main` 或手动 `workflow_dispatch`
+- **访问地址**：`https://<username>.github.io/FormulaOfThings/`
+- **当前状态**：自动部署已启用，只需 `git push origin main`
