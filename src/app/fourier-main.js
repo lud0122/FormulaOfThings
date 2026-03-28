@@ -7,7 +7,7 @@ import { detectImageType, calculateHistogram } from '../image-processor/detector
 import { cannyEdgeDetection } from '../image-processor/edge-detector.js'
 import { traceContour, findFirstBlackPixel, computeOtsuThreshold } from '../image-processor/contour-tracer.js'
 import { dft, pointsToComplex, complexToPoints, magnitudeSpectrum } from '../fourier-analyzer/dft.js'
-import { selectTermCount, calculateEnergyRatio } from '../fourier-analyzer/adaptive-selector.js'
+import { selectTermCount } from '../fourier-analyzer/adaptive-selector.js'
 import { generateFormula, generateParameterTable as generateParams } from '../fourier-analyzer/formula-generator.js'
 import { renderEpicycles } from '../renderer/epicycle-renderer.js'
 import { createAnimationController } from '../renderer/animation-controls.js'
