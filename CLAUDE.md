@@ -2,6 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **当前日期：2026-03-28**
 > 项目目标：提供从轮廓图像生成傅里叶轮圆动画（Epicycles）的完整解决方案
 
 ## 仓库现状
@@ -33,9 +34,9 @@ node --test tests/integration.fourier-epicycle.test.js
 npm run serve
 ```
 
-访问 `http://localhost:4173`
-→ 默认打开 index.html（Canvas2D公式拟合）
-→ 访问 `http://localhost:4173/fourier.html` 打开傅里叶轮圆动画系统
+访问 `http://localhost:4173` 打开 index.html（傅里叶轮圆动画系统）
+
+**注意：** 文档中提到的 `fourier.html` 文件实际不存在于当前仓库。当前只有一个 HTML 入口文件 `index.html`，它直接加载傅里叶轮圆动画系统。
 
 ## 双功能架构总览
 
@@ -64,6 +65,24 @@ npm run serve
 - `src/fourier-analyzer/*` - 傅里叶分析（DFT、自适应选择、公式生成）
 - `src/renderer/*` - 动画渲染（轮圆渲染、动画控制）
 
+**模块导出模式：**
+所有模块使用 ES6 `export` 导出函数，不使用类。主要函数：
+- `fourier-main.js`: `createAppState()`, `handleImageUpload()`, `toggleAnimation()`, `resetAnimation()`, `setAnimationSpeed()`, `initApp()`
+- `epicycle-renderer.js`: `prepareRenderer()`, `renderEpicycles()` - 纯函数，无状态
+- `dft.js`: `dft()`, `idft()`, `pointsToComplex()`, `complexToPoints()`, `magnitudeSpectrum()`
+- `adaptive-selector.js`: `selectTermCount()` - 自适应选择傅里叶项数
+
+**关键数据结构：**
+- 傅里叶系数：`{ a: number[], b: number[], c: number[], d: number[] }` - 四个数组长度相同
+- 应用状态：`createAppState()` 返回的状态对象，包含图像处理、傅里叶分析、动画控制等状态
+- 轮廓点：`Array<{x: number, y: number}>` - 归一化坐标系
+
+**渲染器颜色方案：**
+- 轮圆圆圈：`rgba(100, 149, 237, 0.3)` - 淡蓝色半透明
+- 轮圆半径线：`rgba(100, 149, 237, 0.6)` - 淡蓝色半透明
+- 笔尖点：`red` - 红色
+- 轨迹线：`#00d4ff` - 亮青色（适配深色背景 #0f1115）
+
 ### 功能2：Canvas2D 公式拟合管线（Formula Fitting）
 
 “参考图特征 → 公式渲染 → 相似度评分 → 参数搜索 → 实时交互”
@@ -87,10 +106,9 @@ npm run serve
 
 ## 页面与入口
 
-| 页面 | 入口文件 | 功能描述 |
-|------|----------|----------|
-| `index.html` | `src/app/main.js` | Canvas2D公式拟合管线（原功能）|
-| `fourier.html` | `src/app/fourier-main.js` | 傅里叶轮圆动画系统（新功能）|
+**当前入口：** `index.html` → `src/app/fourier-main.js` （傅里叶轮圆动画系统）
+
+**历史功能：** `src/app/main.js` 是原 Canvas2D 公式拟合管线的入口，但对应的 HTML 文件已不存在。
 
 **共享样式：** `styles/main.css`、`styles/fourier.css`
 
@@ -99,10 +117,12 @@ npm run serve
 ## 测试组织
 
 - **框架**：Node 内置测试框架 `node:test`
-- **统计**：当前共 170+ 个测试，全部通过
+- **统计**：当前共 170+ 个测试（有3个已知失败，与功能无关）
 - **运行方式**：`npm test`（通配符模式 `tests/**/*.test.js`）
 
-**注意：** 测试使用 ES modules (`"type": "module"`)，可直接运行，无需转译
+**注意：**
+- 测试使用 ES modules (`"type": "module"`)，可直接运行，无需转译
+- 3个失败的测试在 `tests/renderer/epicycle-renderer.test.js`，是测试本身的问题（期望返回 `undefined` 但实际返回 `{penX: 0, penY: 0}`），不影响功能
 
 ### 测试目录结构
 ```
@@ -150,3 +170,6 @@ tests/
 - **触发条件**：push 到 `main` 或手动 `workflow_dispatch`
 - **访问地址**：`https://<username>.github.io/FormulaOfThings/`
 - **当前状态**：自动部署已启用，只需 `git push origin main`
+- **静态服务器**：项目无需构建步骤，直接作为静态资源部署
+
+# currentDate Today's date is 2026-03-28. IMPORTANT: this context may or may not be relevant to your tasks. Please verify relevance before using.
