@@ -1,0 +1,2 @@
+[     496ms] The requested module '../fourier-analyzer/adaptive-selector.js' does not provide an export named 'calculateEnergyRatio'
+[     662ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://lud0122.github.io/favicon.ico:0

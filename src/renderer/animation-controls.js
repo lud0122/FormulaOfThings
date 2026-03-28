@@ -169,3 +169,82 @@ export class AnimationController {
     this.#animationId = requestAnimationFrame(() => this.#animationLoop());
   }
 }
+
+/**
+ * 创建动画控制器的工厂函数
+ * 这是一个适配器，用于兼容 fourier-main.js 的接口
+ *
+ * @param {HTMLCanvasElement} canvas - Canvas元素
+ * @param {Object} options - 配置选项
+ * @param {number} options.speed - 播放速度
+ * @param {Function} options.onFrame - 帧回调函数
+ * @param {Function} options.onComplete - 完成回调函数
+ * @returns {Object} 控制器对象
+ */
+export function createAnimationController(canvas, options = {}) {
+  let isPlaying = false;
+  let speed = options.speed || 1;
+  let currentFrame = 0;
+  const totalFrames = 360;
+  let animationId = null;
+
+  const play = () => {
+    if (isPlaying) return;
+    isPlaying = true;
+    animationLoop();
+  };
+
+  const pause = () => {
+    isPlaying = false;
+    if (animationId) {
+      cancelAnimationFrame(animationId);
+      animationId = null;
+    }
+  };
+
+  const stop = () => {
+    pause();
+    currentFrame = 0;
+  };
+
+  const setSpeed = (newSpeed) => {
+    speed = newSpeed;
+  };
+
+  const setProgress = (progress) => {
+    currentFrame = Math.floor(progress * totalFrames);
+    if (options.onFrame) {
+      const t = (currentFrame / totalFrames) * 2 * Math.PI;
+      options.onFrame(t);
+    }
+  };
+
+  const animationLoop = () => {
+    if (!isPlaying) return;
+
+    const t = (currentFrame / totalFrames) * 2 * Math.PI;
+
+    if (options.onFrame) {
+      options.onFrame(t);
+    }
+
+    currentFrame += speed;
+
+    if (currentFrame >= totalFrames) {
+      currentFrame = 0;
+      if (options.onComplete) {
+        options.onComplete();
+      }
+    }
+
+    animationId = requestAnimationFrame(animationLoop);
+  };
+
+  return {
+    play,
+    pause,
+    stop,
+    setSpeed,
+    setProgress
+  };
+}
