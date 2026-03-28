@@ -39,13 +39,13 @@ export function renderEpicycles(ctx, canvasWidth, canvasHeight, coeffs, t, traje
   // 参数验证：检查系数完整性
   if (!coeffs || !coeffs.a || !coeffs.b || !coeffs.c || !coeffs.d) {
     console.error('Invalid coefficients');
-    return;
+    return { penX: 0, penY: 0 };
   }
 
   // 参数验证：检查Canvas上下文有效性
   if (!ctx || typeof ctx.clearRect !== 'function') {
     console.error('Invalid Canvas context');
-    return;
+    return { penX: 0, penY: 0 };
   }
 
   const { a, b, c, d } = coeffs;
@@ -125,4 +125,7 @@ export function renderEpicycles(ctx, canvasWidth, canvasHeight, coeffs, t, traje
     ctx.lineWidth = 2;
     ctx.stroke();
   }
+
+  // 返回笔尖位置（供外部使用）
+  return { penX, penY };
 }

@@ -65,6 +65,14 @@ let uploadZone = null
 let imageInput = null
 let previewImage = null
 
+// Section元素引用
+let contourSectionEl = null
+let animationSectionEl = null
+let formulaSectionEl = null
+let parameterSectionEl = null
+let statsSectionEl = null
+let exportSectionEl = null
+
 /**
  * 设置状态文本
  * @param {string} text - 状态文本
@@ -292,7 +300,24 @@ function displayResults() {
   const { fourierCoeffs, termCount, energyRatio, contourPoints } = appState
   if (!fourierCoeffs) return
 
-  // 1. 生成公式文本（适配公式生成器的输入格式）
+  // 0. 显示所有结果section
+  if (contourSectionEl) contourSectionEl.hidden = false
+  if (animationSectionEl) animationSectionEl.hidden = false
+  if (formulaSectionEl) formulaSectionEl.hidden = false
+  if (parameterSectionEl) parameterSectionEl.hidden = false
+  if (statsSectionEl) statsSectionEl.hidden = false
+  if (exportSectionEl) exportSectionEl.hidden = false
+
+  // 1. 更新统计信息
+  const termCountEl = document.getElementById('term-count')
+  const energyRatioEl = document.getElementById('energy-ratio')
+  const contourPointsEl = document.getElementById('contour-points')
+
+  if (termCountEl) termCountEl.textContent = termCount
+  if (energyRatioEl) energyRatioEl.textContent = `${(energyRatio * 100).toFixed(1)}%`
+  if (contourPointsEl) contourPointsEl.textContent = contourPoints.length
+
+  // 2. 生成公式文本（适配公式生成器的输入格式）
   const coeffsObj = {
     a: fourierCoeffs.map(c => c.re),
     b: fourierCoeffs.map(c => c.im),
@@ -304,13 +329,13 @@ function displayResults() {
     formulaDisplayEl.innerHTML = `<pre>${formulaText}</pre>`
   }
 
-  // 2. 生成参数表
+  // 3. 生成参数表
   const formulaParams = generateParams(coeffsObj)
   if (parameterTableEl) {
     renderParameterTable(parameterTableEl, formulaParams)
   }
 
-  // 3. 创建动画控制器
+  // 4. 创建动画控制器
   if (mainCanvas) {
     animationController = createAnimationController(mainCanvas, {
       speed: appState.speed,
@@ -323,6 +348,9 @@ function displayResults() {
       }
     })
   }
+
+  // 5. 渲染初始帧
+  renderFrame(0)
 }
 
 /**
@@ -593,6 +621,14 @@ export function initApp(options) {
   uploadZone = options.uploadZone
   imageInput = options.imageInput
   previewImage = options.previewImage
+
+  // 获取section元素引用
+  contourSectionEl = options.contourSection || document.getElementById('contour-section')
+  animationSectionEl = options.animationSection || document.getElementById('animation-section')
+  formulaSectionEl = options.formulaSection || document.getElementById('formula-section')
+  parameterSectionEl = options.parameterSection || document.getElementById('parameter-section')
+  statsSectionEl = options.statsSection || document.getElementById('stats-section')
+  exportSectionEl = options.exportSection || document.getElementById('export-section')
 
   // 绑定上传事件
   if (uploadZone && imageInput) {

@@ -1,0 +1,2 @@
+[     182ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:4173/fourier.html:0
+[     434ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:4173/favicon.ico:0

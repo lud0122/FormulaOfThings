@@ -1,0 +1,6 @@
+[    1942ms] [ERROR] Processing error: TypeError: Cannot read properties of undefined (reading 'penX')
+    at renderFrame (http://localhost:4173/src/app/fourier-main.js:430:40)
+    at displayResults (http://localhost:4173/src/app/fourier-main.js:353:3)
+    at handleImageUpload (http://localhost:4173/src/app/fourier-main.js:232:5)
+    at async HTMLInputElement.<anonymous> (http://localhost:4173/src/app/fourier-main.js:653:7) @ http://localhost:4173/src/app/fourier-main.js:554
+[    1942ms] [ERROR] [UNKNOWN_ERROR] Cannot read properties of undefined (reading 'penX') @ http://localhost:4173/src/app/fourier-main.js:92
