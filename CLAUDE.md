@@ -27,12 +27,15 @@ npm test
 node --test tests/fit/score.test.js
 node --test tests/image-processor/detector.test.js
 node --test tests/fourier-analyzer/dft.test.js
+node --test tests/integration.fourier-epicycle.test.js
 
 # 启动本地静态服务
 npm run serve
 ```
 
 访问 `http://localhost:4173`
+→ 默认打开 index.html（Canvas2D公式拟合）
+→ 访问 `http://localhost:4173/fourier.html` 打开傅里叶轮圆动画系统
 
 ## 双功能架构总览
 
@@ -65,21 +68,41 @@ npm run serve
 
 “参考图特征 → 公式渲染 → 相似度评分 → 参数搜索 → 实时交互”
 
+**主入口：** `src/app/main.js`
+
 **核心模块：**
 - `src/formula/*` - 参数schema和数学模型
 - `src/render/canvasRenderer.js` - 公式到像素的渲染
 - `src/fit/*` - 特征提取、评分、优化器
+- `src/analysis/*` - 傅里叶分析、频谱渲染、公式显示
+
+**数据流**（功能2）：
+```
+参考图(ideal_1.PNG) → loadReferenceImageData → extractFeaturesFromGray
+                                                      ↓
+[UI参数变更] → renderToBuffer → extractFeaturesFromGray → scoreFeatures
+                                                      ↑
+                                                    optimizer
+```
 
 ## 页面与入口
 
-- 页面骨架：`index.html`
-- 样式：`styles/main.css`
-- 浏览器入口：`<script type="module" src="./src/app/main.js">`
+| 页面 | 入口文件 | 功能描述 |
+|------|----------|----------|
+| `index.html` | `src/app/main.js` | Canvas2D公式拟合管线（原功能）|
+| `fourier.html` | `src/app/fourier-main.js` | 傅里叶轮圆动画系统（新功能）|
+
+**共享样式：** `styles/main.css`、`styles/fourier.css`
+
+**参考图像：** `ideal/ideal_1.PNG`
 
 ## 测试组织
 
 - **框架**：Node 内置测试框架 `node:test`
 - **统计**：当前共 170+ 个测试，全部通过
+- **运行方式**：`npm test`（通配符模式 `tests/**/*.test.js`）
+
+**注意：** 测试使用 ES modules (`"type": "module"`)，可直接运行，无需转译
 
 ### 测试目录结构
 ```

@@ -3,66 +3,139 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Formula Of Things - Canvas2D</title>
+    <title>傅里叶轮圆动画系统 - Formula Of Things</title>
     <link rel="stylesheet" href="./styles/main.css" />
+    <link rel="stylesheet" href="./styles/fourier.css" />
   </head>
   <body>
-    <main class="layout">
-      <section class="viewer">
-        <div>
-          <h2>公式生成结果</h2>
-          <canvas id="formula-canvas" width="642" height="854"></canvas>
-        </div>
-        <div>
-          <h2>参考图</h2>
-          <img id="reference-image" src="./ideal/ideal_1.PNG" alt="参考图" />
+    <header class="app-header">
+      <h1>傅里叶轮圆动画系统</h1>
+      <p class="subtitle">上传图像，提取轮廓，生成傅里叶级数动画</p>
+    </header>
+
+    <main class="fourier-layout">
+      <!-- 左侧面板：上传和控制 -->
+      <aside class="control-sidebar">
+        <!-- 文件上传 -->
+        <section class="upload-section">
+          <h2>上传图像</h2>
+          <div class="upload-zone" id="upload-zone">
+            <input type="file" id="image-input" accept="image/*" hidden />
+            <div class="upload-placeholder">
+              <p>点击或拖拽上传图像</p>
+              <p class="upload-hint">支持 JPG, PNG, WebP, BMP</p>
+            </div>
+            <img id="preview-image" alt="预览" hidden />
+          </div>
+        </section>
+
+        <!-- 轮廓预览 -->
+        <section class="contour-preview" id="contour-section" hidden>
+          <h2>轮廓预览</h2>
+          <canvas id="contour-canvas" width="200" height="200"></canvas>
+          <div class="threshold-controls">
+            <label>
+              边缘敏感度
+              <input type="range" id="threshold-slider" min="0" max="255" value="128" />
+            </label>
+            <button id="confirm-contour-btn" class="btn-primary">确认轮廓</button>
+          </div>
+        </section>
+
+        <!-- 动画控制 -->
+        <section class="animation-controls" id="animation-section" hidden>
+          <h2>动画控制</h2>
+          <div class="control-buttons">
+            <button id="play-btn" class="btn-primary">播放</button>
+            <button id="reset-btn">重置</button>
+          </div>
+          <div class="speed-control">
+            <label>播放速度</label>
+            <select id="speed-select">
+              <option value="0.5">0.5x</option>
+              <option value="1" selected>1x</option>
+              <option value="2">2x</option>
+            </select>
+          </div>
+          <div class="progress-control">
+            <label>进度</label>
+            <input type="range" id="progress-bar" min="0" max="100" value="0" />
+          </div>
+          <div class="status-display" id="status">就绪</div>
+        </section>
+
+        <!-- 导出面板 -->
+        <section class="export-section" id="export-section" hidden>
+          <h2>导出</h2>
+          <div class="export-buttons">
+            <button id="export-json-btn">导出 JSON</button>
+            <button id="export-csv-btn">导出 CSV</button>
+            <button id="export-png-btn">保存截图</button>
+          </div>
+        </section>
+      </aside>
+
+      <!-- 中间：动画渲染 -->
+      <section class="animation-viewer">
+        <div class="canvas-container">
+          <canvas id="animation-canvas" width="800" height="600"></canvas>
         </div>
       </section>
 
-      <section class="panel">
-        <h2>参数面板</h2>
-        <div id="control-panel"></div>
-        <div class="actions">
-          <button id="fit-btn">自动拟合</button>
-          <button id="export-png-btn">导出 PNG</button>
-          <button id="export-params-btn">导出参数</button>
-          <input id="import-params-input" type="file" accept="application/json" />
-        </div>
-        <pre id="status">idle</pre>
-      </section>
+      <!-- 右侧面板：公式和参数 -->
+      <aside class="info-sidebar">
+        <!-- 傅里叶公式 -->
+        <section class="formula-section" id="formula-section" hidden>
+          <h2>傅里叶级数公式</h2>
+          <div class="formula-display">
+            <p class="formula-eq">x(t) = a₀ + Σ[aₙcos(nt) + bₙsin(nt)]</p>
+            <p class="formula-eq">y(t) = c₀ + Σ[cₙcos(nt) + dₙsin(nt)]</p>
+          </div>
+          <button id="copy-formula-btn">复制公式</button>
+        </section>
 
-      <section class="formula-display">
-        <h2>原始算法公式</h2>
-        <pre id="formula-text"></pre>
-      </section>
+        <!-- 参数表 -->
+        <section class="parameter-section" id="parameter-section" hidden>
+          <h2>参数表</h2>
+          <div class="parameter-table-container">
+            <table class="parameter-table" id="parameter-table">
+              <thead>
+                <tr>
+                  <th>n</th>
+                  <th>rₙ</th>
+                  <th>ωₙ</th>
+                  <th>φₙ</th>
+                  <th>能量</th>
+                </tr>
+              </thead>
+              <tbody id="parameter-tbody">
+                <!-- 动态生成 -->
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-      <section class="fourier-section">
-        <h2>傅里叶分析</h2>
-        <div class="fourier-controls">
-          <button id="fourier-analyze-btn">分析频谱</button>
-          <button id="fourier-animate-btn">播放傅里叶重建</button>
-          <button id="original-animate-btn">播放原算法绘制</button>
-          <select id="animation-mode">
-            <option value="sequential">逐步累加</option>
-            <option value="smooth">平滑过渡</option>
-          </select>
-        </div>
-        <div class="fourier-results" style="display:none;">
-          <div>
-            <h3>频谱图</h3>
-            <canvas id="spectrum-canvas" width="256" height="256"></canvas>
+        <!-- 统计信息 -->
+        <section class="stats-section" id="stats-section" hidden>
+          <h2>统计信息</h2>
+          <div class="stats-grid">
+            <div class="stat-item">
+              <span class="stat-label">项数</span>
+              <span class="stat-value" id="term-count">-</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">能量占比</span>
+              <span class="stat-value" id="energy-ratio">-</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">轮廓点数</span>
+              <span class="stat-value" id="contour-points">-</span>
+            </div>
           </div>
-          <div>
-            <h3>傅里叶重建 (8项)</h3>
-            <canvas id="fourier-canvas" width="256" height="256"></canvas>
-          </div>
-          <div class="fourier-formula">
-            <h3>傅里叶级数公式</h3>
-            <pre id="fourier-formula-text"></pre>
-          </div>
-        </div>
-      </section>
+        </section>
+      </aside>
     </main>
-    <script type="module" src="./src/app/main.js"></script>
+
+    <script type="module" src="./src/app/fourier-main.js"></script>
   </body>
 </html>
