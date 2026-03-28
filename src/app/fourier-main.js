@@ -358,7 +358,7 @@ function renderParameterTable(container, params) {
       <td>${index}</td>
       <td>${param.radius.toFixed(2)}</td>
       <td>${param.angularVelocity}</td>
-      <td>${param.phase.toFixed(3)}</td>
+      <td>${param.phaseX.toFixed(3)}</td>
       <td>${(param.energyRatio * 100).toFixed(1)}%</td>
     `
     tbody.appendChild(row)
