@@ -114,14 +114,14 @@ export function renderEpicycles(ctx, canvasWidth, canvasHeight, coeffs, t, traje
   // 累积轨迹点（Canvas坐标）
   trajectory.push({ x: penX, y: penY });
 
-  // 绘制轨迹（黑色曲线）
+  // 绘制轨迹（亮青色曲线）
   if (trajectory.length > 1) {
     ctx.beginPath();
     ctx.moveTo(trajectory[0].x, trajectory[0].y);
     for (let i = 1; i < trajectory.length; i++) {
       ctx.lineTo(trajectory[i].x, trajectory[i].y);
     }
-    ctx.strokeStyle = 'black';
+    ctx.strokeStyle = '#00d4ff';
     ctx.lineWidth = 2;
     ctx.stroke();
   }
