@@ -1,0 +1,6 @@
+[   49253ms] [ERROR] Processing error: Error: INVALID_COEFFICIENTS: 傅里叶系数不完整
+    at selectTermCount (https://lud0122.github.io/FormulaOfThings/src/fourier-analyzer/adaptive-selector.js:15:11)
+    at performFourierAnalysis (https://lud0122.github.io/FormulaOfThings/src/app/fourier-main.js:252:21)
+    at handleImageUpload (https://lud0122.github.io/FormulaOfThings/src/app/fourier-main.js:221:11)
+    at async HTMLInputElement.<anonymous> (https://lud0122.github.io/FormulaOfThings/src/app/fourier-main.js:608:7) @ https://lud0122.github.io/FormulaOfThings/src/app/fourier-main.js:517
+[   49255ms] [ERROR] [INVALID_COEFFICIENTS] 傅里叶系数无效 @ https://lud0122.github.io/FormulaOfThings/src/app/fourier-main.js:84

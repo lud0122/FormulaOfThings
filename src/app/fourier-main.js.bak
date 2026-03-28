@@ -248,17 +248,8 @@ async function performFourierAnalysis() {
   const coeffs = dft(complexPoints)
   appState.fourierCoeffs = coeffs
 
-
- // 4. 转换系数格式为 {a, b, c, d}
- const coeffsObj = {
- a: coeffs.map(c => c.re),
- b: coeffs.map(c => c.im),
- c: coeffs.map(c => c.re),
- d: coeffs.map(c => c.im)
- }
-
-  // 5. 自适应项数选择
-  const selection = selectTermCount(coeffsObj, 0.95)
+  // 4. 自适应项数选择
+  const selection = selectTermCount(coeffs, 0.95)
   appState.termCount = selection.termCount
   appState.energyRatio = selection.energyRatio
 }
