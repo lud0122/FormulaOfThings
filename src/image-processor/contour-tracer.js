@@ -25,6 +25,14 @@ const DIRECTIONS = [
  */
 export function findFirstBlackPixel(image) {
   const { width, height, data } = image
+  
+  // 统计黑白像素
+  let blackCount = 0, whiteCount = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i] < 128) blackCount++;
+    else whiteCount++;
+  }
+  console.log(`[findFirstBlackPixel] 图像尺寸=${width}x${height}, 黑色像素=${blackCount}, 白色像素=${whiteCount}`);
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {

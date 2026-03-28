@@ -141,15 +141,35 @@ function binaryize(imageData, threshold = 128) {
   const ctx = canvas.getContext('2d')
   const output = ctx.createImageData(width, height)
 
+  // 统计黑白像素，判断是否需要反转
+  let darkCount = 0
   for (let i = 0; i < data.length; i += 4) {
     const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
-    const val = gray < threshold ? 0 : 255
+    if (gray < threshold) darkCount++
+  }
+
+  const totalPixels = data.length / 4
+  const invert = darkCount > totalPixels * 0.5 // 深色背景需要反转
+  console.log(`[二值化] 阈值=${threshold}, 暗像素=${darkCount}, 总像素=${totalPixels}, 反转=${invert}`)
+
+  for (let i = 0; i < data.length; i += 4) {
+    const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
+    const isDark = gray < threshold
+    const val = invert ? (isDark ? 255 : 0) : (isDark ? 0 : 255)
     output.data[i] = val
     output.data[i + 1] = val
     output.data[i + 2] = val
     output.data[i + 3] = 255
   }
 
+  // 统计二值化结果
+  let resultBlack = 0, resultWhite = 0;
+  for (let i = 0; i < output.data.length; i += 4) {
+    if (output.data[i] === 0) resultBlack++;
+    else if (output.data[i] === 255) resultWhite++;
+  }
+  console.log(`[二值化结果] 黑色像素=${resultBlack}, 白色像素=${resultWhite}`);
+  
   return output
 }
 
@@ -200,9 +220,16 @@ export async function handleImageUpload(file) {
     let contour
     if (appState.imageType === 'contour') {
       // 纯轮廓图：直接二值化后追踪
-      const binaryData = binaryize(imageData, 128)
+      const threshold = computeOtsuThreshold(imageData)
+    console.log(`[轮廓提取] 图像类型: ${appState.imageType}, Otsu阈值: ${threshold}`)
+  const binaryData = binaryize(imageData, threshold)
+    console.log(`[轮廓提取] 二值化完成, 图像尺寸: ${binaryData.width}x${binaryData.height}`)
       contour = traceContour(binaryData)
       setStatus('提取完成')
+    console.log(`[轮廓提取] 轮廓追踪完成, 点数: ${contour.length}`)
+    if (contour.length <= 10) {
+        console.log(`[轮廓点坐标]`, contour.map(p => `(${p.x.toFixed(1)}, ${p.y.toFixed(1)})`).join(', '))
+    }
     } else {
       // 复杂图：使用Canny边缘检测
       const edges = cannyEdgeDetection(imageData, { lowThreshold: 50, highThreshold: 150 })
