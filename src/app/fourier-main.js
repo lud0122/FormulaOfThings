@@ -225,10 +225,13 @@ export async function handleImageUpload(file) {
 
     appState.contourPoints = contour
 
-    // 6. 傅里叶分析
+    // 6. 渲染轮廓预览
+    renderContourPreview()
+
+    // 7. 傅里叶分析
     await performFourierAnalysis()
 
-    // 7. 显示结果
+    // 8. 显示结果
     displayResults()
     setStatus('ready')
 
@@ -236,6 +239,7 @@ export async function handleImageUpload(file) {
     handleProcessingError(error)
   }
 }
+
 
 /**
  * 执行傅里叶分析
@@ -269,6 +273,72 @@ async function performFourierAnalysis() {
   const selection = selectTermCount(coeffsObj, 0.95)
   appState.termCount = selection.termCount
   appState.energyRatio = selection.energyRatio
+}
+
+/**
+ * 渲染轮廓预览
+ */
+function renderContourPreview() {
+  if (!previewCtx || !previewCanvas || !appState.contourPoints) return
+
+  const { width, height } = previewCanvas
+  const { contourPoints } = appState
+
+  // 清空画布
+  previewCtx.fillStyle = '#1a1a1a'
+  previewCtx.fillRect(0, 0, width, height)
+
+  // 计算边界框
+  const minX = Math.min(...contourPoints.map(p => p.x))
+  const maxX = Math.max(...contourPoints.map(p => p.x))
+  const minY = Math.min(...contourPoints.map(p => p.y))
+  const maxY = Math.max(...contourPoints.map(p => p.y))
+  const contourWidth = maxX - minX
+  const contourHeight = maxY - minY
+
+  // 计算缩放比例（留出边距）
+  const padding = 20
+  const scaleX = (width - 2 * padding) / contourWidth
+  const scaleY = (height - 2 * padding) / contourHeight
+  const scale = Math.min(scaleX, scaleY)
+
+  // 计算偏移量（居中）
+  const offsetX = (width - contourWidth * scale) / 2 - minX * scale
+  const offsetY = (height - contourHeight * scale) / 2 - minY * scale
+
+  // 绘制轮廓点
+  previewCtx.strokeStyle = '#00d4ff'
+  previewCtx.lineWidth = 2
+  previewCtx.beginPath()
+
+  contourPoints.forEach((point, index) => {
+    const x = point.x * scale + offsetX
+    const y = point.y * scale + offsetY
+
+    if (index === 0) {
+      previewCtx.moveTo(x, y)
+    } else {
+      previewCtx.lineTo(x, y)
+    }
+  })
+
+  // 闭合路径
+  if (contourPoints.length > 0) {
+    const firstPoint = contourPoints[0]
+    previewCtx.lineTo(firstPoint.x * scale + offsetX, firstPoint.y * scale + offsetY)
+  }
+
+  previewCtx.stroke()
+
+  // 绘制轮廓点（小圆点）
+  previewCtx.fillStyle = '#ff6b6b'
+  contourPoints.forEach(point => {
+    const x = point.x * scale + offsetX
+    const y = point.y * scale + offsetY
+    previewCtx.beginPath()
+    previewCtx.arc(x, y, 2, 0, Math.PI * 2)
+    previewCtx.fill()
+  })
 }
 
 /**
