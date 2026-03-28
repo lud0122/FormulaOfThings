@@ -60,6 +60,11 @@ let progressBar = null
 // 动画控制器
 let animationController = null
 
+// 上传相关元素
+let uploadZone = null
+let imageInput = null
+let previewImage = null
+
 /**
  * 设置状态文本
  * @param {string} text - 状态文本
@@ -551,6 +556,9 @@ function handleProcessingError(error) {
  * @param {HTMLButtonElement} options.resetBtn - 重置按钮
  * @param {HTMLSelectElement} options.speedSelect - 速度选择器
  * @param {HTMLInputElement} options.progressBar - 进度条
+ * @param {HTMLElement} options.uploadZone - 上传区域
+ * @param {HTMLInputElement} options.imageInput - 文件输入
+ * @param {HTMLImageElement} options.previewImage - 预览图像
  */
 export function initApp(options) {
   // 获取Canvas引用
@@ -571,6 +579,63 @@ export function initApp(options) {
   resetBtn = options.resetBtn
   speedSelect = options.speedSelect
   progressBar = options.progressBar
+
+  // 获取上传相关元素
+  uploadZone = options.uploadZone
+  imageInput = options.imageInput
+  previewImage = options.previewImage
+
+  // 绑定上传事件
+  if (uploadZone && imageInput) {
+    // 点击上传区域触发文件选择
+    uploadZone.addEventListener('click', () => {
+      imageInput.click()
+    })
+
+    // 文件选择后处理
+    imageInput.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+
+      // 显示预览
+      if (previewImage) {
+        const url = URL.createObjectURL(file)
+        previewImage.src = url
+        previewImage.hidden = false
+      }
+
+      // 处理上传
+      await handleImageUpload(file)
+    })
+
+    // 拖拽上传
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault()
+      uploadZone.classList.add('dragover')
+    })
+
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.classList.remove('dragover')
+    })
+
+    uploadZone.addEventListener('drop', async (e) => {
+      e.preventDefault()
+      uploadZone.classList.remove('dragover')
+
+      const file = e.dataTransfer?.files?.[0]
+      if (!file) return
+
+      // 显示预览
+      if (previewImage) {
+        const url = URL.createObjectURL(file)
+        previewImage.src = url
+        previewImage.hidden = false
+      }
+
+      // 处理上传
+      await handleImageUpload(file)
+    })
+  }
 
   // 绑定事件监听器
   if (playBtn) {
