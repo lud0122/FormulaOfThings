@@ -230,7 +230,23 @@ export async function handleImageUpload(file) {
  const repairedData = repairBrokenContour(binaryData)
  console.log(`[轮廓提取] 形态学修复完成`)
 
+
+ // 尝试使用传统轮廓追踪
+ try {
  contour = traceContour(repairedData)
+ console.log(`[轮廓提取] 传统追踪完成, 点数: ${contour.length}`)
+
+ // 如果追踪点数太少（< 50），说明轮廓断裂严重，改用全像素提取
+ if (contour.length < 50) {
+ console.log(`[轮廓提取] 点数过少，改用全像素提取模式`)
+ contour = extractAllBlackPixels(repairedData, 10) // 每10个像素采样一次
+ }
+ } catch (error) {
+ // 如果传统追踪失败，使用全像素提取
+ console.log(`[轮廓提取] 传统追踪失败: ${error.message}，改用全像素提取模式`)
+ contour = extractAllBlackPixels(repairedData, 10)
+ }
+
 
       setStatus('提取完成')
     console.log(`[轮廓提取] 轮廓追踪完成, 点数: ${contour.length}`)
