@@ -19,6 +19,30 @@ const DIRECTIONS = [
 ]
 
 /**
+ * 提取所有黑色像素作为轮廓点（用于断裂轮廓的情况）
+ * @param {ImageData} binaryImage - 二值图像
+ * @param {number} sampleStep - 采样步长（每隔N个像素取一个点）
+ * @returns {Array<{x: number, y: number}>} 轮廓点数组
+ */
+export function extractAllBlackPixels(binaryImage, sampleStep = 5) {
+  const { width, height, data } = binaryImage
+  const points = []
+
+  for (let y = 0; y < height; y += sampleStep) {
+    for (let x = 0; x < width; x += sampleStep) {
+      const i = (y * width + x) * 4
+      // 如果是黑色像素（轮廓）
+      if (data[i] <= 128 && data[i + 1] <= 128 && data[i + 2] <= 128) {
+        points.push({ x, y })
+      }
+    }
+  }
+
+  console.log(`[extractAllBlackPixels] 采样步长=${sampleStep}, 提取点数=${points.length}`)
+  return points
+}
+
+/**
  * 寻找第一个黑色像素（从左上角开始扫描）
  * @param {ImageData} image - 二值图像
  * @returns {{x: number, y: number} | null} 第一个黑色像素坐标，如果未找到返回null

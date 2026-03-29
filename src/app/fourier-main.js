@@ -5,7 +5,8 @@
 
 import { detectImageType, calculateHistogram } from '../image-processor/detector.js'
 import { cannyEdgeDetection } from '../image-processor/edge-detector.js'
-import { traceContour, findFirstBlackPixel, computeOtsuThreshold } from '../image-processor/contour-tracer.js'
+import { traceContour, findFirstBlackPixel, computeOtsuThreshold, extractAllBlackPixels } from '../image-processor/contour-tracer.js'
+import { repairBrokenContour } from '../image-processor/morphology.js'
 import { dft, pointsToComplex, complexToPoints, magnitudeSpectrum } from '../fourier-analyzer/dft.js'
 import { selectTermCount } from '../fourier-analyzer/adaptive-selector.js'
 import { generateFormula, generateParameterTable as generateParams } from '../fourier-analyzer/formula-generator.js'
@@ -219,12 +220,18 @@ export async function handleImageUpload(file) {
     // 5. 提取轮廓
     let contour
     if (appState.imageType === 'contour') {
-      // 纯轮廓图：直接二值化后追踪
+      // 纯轮廓图：二值化 → 形态学修复 → 追踪
       const threshold = computeOtsuThreshold(imageData)
     console.log(`[轮廓提取] 图像类型: ${appState.imageType}, Otsu阈值: ${threshold}`)
   const binaryData = binaryize(imageData, threshold)
     console.log(`[轮廓提取] 二值化完成, 图像尺寸: ${binaryData.width}x${binaryData.height}`)
-      contour = traceContour(binaryData)
+
+ // 形态学修复：连接断裂的轮廓线
+ const repairedData = repairBrokenContour(binaryData)
+ console.log(`[轮廓提取] 形态学修复完成`)
+
+ contour = traceContour(repairedData)
+
       setStatus('提取完成')
     console.log(`[轮廓提取] 轮廓追踪完成, 点数: ${contour.length}`)
     if (contour.length <= 10) {
