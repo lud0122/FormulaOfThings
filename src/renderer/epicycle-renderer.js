@@ -14,8 +14,48 @@
  * @returns {Object} 渲染参数 {scale, offsetX, offsetY}
  */
 export function prepareRenderer(coeffs, canvasWidth, canvasHeight) {
-  // 使用Canvas较小边的40%作为缩放基准（80%利用率）
-  const scale = Math.min(canvasWidth, canvasHeight) * 0.4;
+  // 计算傅里叶级数重建轮廓的边界范围
+  // 通过采样时间参数t来估计轮廓的实际范围
+  const N = coeffs.a.length;
+  const sampleCount = 360; // 采样360个点
+  let minX = Infinity, maxX = -Infinity;
+  let minY = Infinity, maxY = -Infinity;
+
+  // 采样傅里叶曲线以确定边界
+  for (let i = 0; i < sampleCount; i++) {
+    const t = (i / sampleCount) * 2 * Math.PI;
+    let x = 0, y = 0;
+
+    // 重建点的位置（累积所有频率分量）
+    for (let n = 0; n < N; n++) {
+      const r = Math.sqrt(coeffs.a[n] ** 2 + coeffs.b[n] ** 2);
+      const angle = n * t + Math.atan2(coeffs.b[n], coeffs.a[n]);
+      x += r * Math.cos(angle);
+      y += r * Math.sin(angle);
+    }
+
+    minX = Math.min(minX, x);
+    maxX = Math.max(maxX, x);
+    minY = Math.min(minY, y);
+    maxY = Math.max(maxY, y);
+  }
+
+  const contourWidth = maxX - minX;
+  const contourHeight = maxY - minY;
+
+  // 处理边界情况：如果轮廓尺寸为0，使用默认缩放
+  if (contourWidth === 0 || contourHeight === 0) {
+    const scale = Math.min(canvasWidth, canvasHeight) * 0.4;
+    const offsetX = canvasWidth / 2;
+    const offsetY = canvasHeight / 2;
+    return { scale, offsetX, offsetY };
+  }
+
+  // 使用与预览相同的动态缩放策略（留出10%边距）
+  const padding = 0.05; // 5%边距
+  const scaleX = (canvasWidth * (1 - 2 * padding)) / contourWidth;
+  const scaleY = (canvasHeight * (1 - 2 * padding)) / contourHeight;
+  const scale = Math.min(scaleX, scaleY);
 
   // Canvas中心作为偏移起点
   const offsetX = canvasWidth / 2;

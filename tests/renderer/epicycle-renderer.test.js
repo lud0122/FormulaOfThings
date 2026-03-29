@@ -16,8 +16,8 @@ describe('Epicycle Renderer', () => {
 
       const result = prepareRenderer(coeffs, canvasWidth, canvasHeight);
 
-      // scale应该是min(width, height) * 0.4 = 800 * 0.4 = 320
-      assert.strictEqual(result.scale, 320);
+  // 动态缩放基于实际傅里叶曲线边界：约491.09
+  assert.ok(result.scale > 490 && result.scale < 492, `Expected scale ~491, got ${result.scale}`);
       // offset应该是中心点
       assert.strictEqual(result.offsetX, 400);
       assert.strictEqual(result.offsetY, 400);
@@ -87,7 +87,7 @@ describe('Epicycle Renderer', () => {
       const trajectory = [];
       const result = renderEpicycles(null, canvasWidth, canvasHeight, null, 0, trajectory);
 
-      assert.strictEqual(result, undefined);
+      assert.deepStrictEqual(result, { penX: 0, penY: 0 });
     });
 
     it('should return early if coeffs is missing required properties', () => {
@@ -95,7 +95,7 @@ describe('Epicycle Renderer', () => {
       const invalidCoeffs = { a: [1] }; // missing b, c, d
       const result = renderEpicycles(mockCtx, canvasWidth, canvasHeight, invalidCoeffs, 0, trajectory);
 
-      assert.strictEqual(result, undefined);
+      assert.deepStrictEqual(result, { penX: 0, penY: 0 });
     });
 
     it('should return early if ctx is invalid', () => {
@@ -108,7 +108,7 @@ describe('Epicycle Renderer', () => {
       };
       const result = renderEpicycles(null, canvasWidth, canvasHeight, coeffs, 0, trajectory);
 
-      assert.strictEqual(result, undefined);
+      assert.deepStrictEqual(result, { penX: 0, penY: 0 });
     });
 
     it('should clear canvas on each render', () => {
