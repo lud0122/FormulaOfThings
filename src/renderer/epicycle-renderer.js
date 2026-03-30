@@ -8,13 +8,14 @@
  * 准备渲染参数
  * 计算缩放比例和偏移量，使得图形居中且充分利用Canvas空间
  *
- * @param {Object} coeffs - 傅里叶系数 {a, b}
+ * @param {Object} coeffs - 傅里叶系数 {a, b, c, d} 或 {a, b}
  * @param {number} canvasWidth - Canvas宽度
  * @param {number} canvasHeight - Canvas高度
  * @returns {Object} 渲染参数 {scale, offsetX, offsetY}
  */
 export function prepareRenderer(coeffs, canvasWidth, canvasHeight) {
-  const { a, b } = coeffs;
+  // 支持 {a,b,c,d} 格式（推荐）和 {a,b} 格式（兼容）
+  const { a, b, c = a, d = b } = coeffs;
   const N = a.length;
 
   // 采样傅里叶曲线以确定边界
@@ -26,18 +27,14 @@ export function prepareRenderer(coeffs, canvasWidth, canvasHeight) {
     const t = (i / sampleCount) * 2 * Math.PI;
     let x = 0, y = 0;
 
-    // 使用正确的傅里叶级数重建公式（笛卡尔形式）
-    // z(t) = Σ c_n * e^(i*n*t)，其中 c_n = a_n + i*b_n
-    // x(t) = Σ [a_n * cos(n*t) - b_n * sin(n*t)]
-    // y(t) = Σ [a_n * sin(n*t) + b_n * cos(n*t)]
-    for (let n = 0; n < N; n++) {
-      const cos_nt = Math.cos(n * t);
-      const sin_nt = Math.sin(n * t);
-      // z_n(t) = c_n * e^(i*n*t) = (a_n + i*b_n) * (cos(n*t) + i*sin(n*t))
-      // 实部: a_n*cos - b_n*sin
-      // 虚部: a_n*sin + b_n*cos
-      x += a[n] * cos_nt - b[n] * sin_nt;
-      y += a[n] * sin_nt + b[n] * cos_nt;
+    // 使用正确的傅里叶级数重建公式（独立x,y展开）
+    // x(t) = Σ [a_k*cos(k*t) - b_k*sin(k*t)]
+    // y(t) = Σ [c_k*cos(k*t) - d_k*sin(k*t)]
+    for (let k = 0; k < N; k++) {
+      const cos_kt = Math.cos(k * t);
+      const sin_kt = Math.sin(k * t);
+      x += a[k] * cos_kt - b[k] * sin_kt;
+      y += c[k] * cos_kt - d[k] * sin_kt;
     }
 
     minX = Math.min(minX, x);
@@ -94,7 +91,10 @@ export function renderEpicycles(ctx, canvasWidth, canvasHeight, coeffs, t, traje
     return { penX: 0, penY: 0 };
   }
 
-  const { a, b } = coeffs;
+  // 支持 {a,b,c,d} 格式（推荐）和 {a,b} 格式（兼容旧代码）
+  // a,b = x方向的余弦/正弦系数
+  // c,d = y方向的余弦/正弦系数
+  const { a, b, c = a, d = b } = coeffs;
   const N = a.length;
 
   // 准备渲染参数
@@ -108,52 +108,54 @@ export function renderEpicycles(ctx, canvasWidth, canvasHeight, coeffs, t, traje
   let cy = 0;
 
   // 绘制每个轮圆
-  for (let n = 0; n < N; n++) {
-    // 计算复数系数 c_n = a_n + i*b_n
-    // |c_n| = sqrt(a_n^2 + b_n^2) 是轮圆的半径
-    const r = Math.sqrt(a[n] ** 2 + b[n] ** 2);
+  // x(t) = Σ [a_k*cos(k*t) - b_k*sin(k*t)]
+  // y(t) = Σ [c_k*cos(k*t) - d_k*sin(k*t)]
+  for (let k = 0; k < N; k++) {
+    const cos_kt = Math.cos(k * t);
+    const sin_kt = Math.sin(k * t);
 
-    // 计算当前圆的相位角
-    const phase = Math.atan2(b[n], a[n]);
-
-    // 计算旋转后的角度（傅里叶级数：每个频率分量旋转 n*t）
-    const angle = phase + n * t;
-
-    // 转换为Canvas坐标
+    // 当前圆心位置的Canvas坐标
     const canvasCx = offsetX + cx * scale;
     const canvasCy = offsetY + cy * scale;
 
-    // 绘制轮圆（淡蓝色半透明）
-    ctx.beginPath();
-    ctx.arc(canvasCx, canvasCy, r * scale, 0, 2 * Math.PI);
-    ctx.strokeStyle = 'rgba(100, 149, 237, 0.3)';
-    ctx.stroke();
+    // 计算x方向的分量：vx = a_k*cos(kt) - b_k*sin(kt)
+    const vx = a[k] * cos_kt - b[k] * sin_kt;
+    // 计算y方向的分量：vy = c_k*cos(kt) - d_k*sin(kt)
+    const vy = c[k] * cos_kt - d[k] * sin_kt;
 
-    // 计算下一个圆心位置（圆周上的点）
-    // c_n * e^(i*n*t) = (a_n + i*b_n) * (cos(n*t) + i*sin(n*t))
-    // 实部: a_n*cos - b_n*sin
-    // 虚部: a_n*sin + b_n*cos
-    const cos_nt = Math.cos(n * t);
-    const sin_nt = Math.sin(n * t);
-    const dx = a[n] * cos_nt - b[n] * sin_nt;
-    const dy = a[n] * sin_nt + b[n] * cos_nt;
-    const px = cx + dx;
-    const py = cy + dy;
+    // 计算x方向轮圆（用于可视化x分量）
+    const rx = Math.sqrt(a[k] ** 2 + b[k] ** 2);
+    if (rx > 0.001) {
+      // 绘制x方向轮圆（蓝色）
+      ctx.beginPath();
+      ctx.arc(canvasCx, canvasCy, rx * scale, 0, 2 * Math.PI);
+      ctx.strokeStyle = 'rgba(100, 149, 237, 0.15)';
+      ctx.stroke();
+    }
 
-    // 绘制半径线（从圆心到圆周）
+    // 计算y方向轮圆（用于可视化y分量）
+    const ry = Math.sqrt(c[k] ** 2 + d[k] ** 2);
+    if (ry > 0.001) {
+      // y方向的轮圆以(cx, cy+vy)为中心
+      ctx.beginPath();
+      ctx.arc(canvasCx, canvasCy + vy * scale, ry * scale, 0, 2 * Math.PI);
+      ctx.strokeStyle = 'rgba(100, 237, 149, 0.15)';
+      ctx.stroke();
+    }
+
+    // 计算下一个位置（累加x和y分量）
+    const px = cx + vx;
+    const py = cy + vy;
+
+    // 绘制从当前位置到新位置的向量
     ctx.beginPath();
     ctx.moveTo(canvasCx, canvasCy);
     ctx.lineTo(offsetX + px * scale, offsetY + py * scale);
-    ctx.strokeStyle = 'rgba(100, 149, 237, 0.6)';
+    ctx.strokeStyle = 'rgba(200, 200, 200, 0.3)';
+    ctx.lineWidth = 1;
     ctx.stroke();
 
-    // 绘制圆心点
-    ctx.beginPath();
-    ctx.arc(canvasCx, canvasCy, 3, 0, 2 * Math.PI);
-    ctx.fillStyle = 'rgba(100, 149, 237, 0.8)';
-    ctx.fill();
-
-    // 更新圆心位置（累积）
+    // 更新圆心位置
     cx = px;
     cy = py;
   }

@@ -7,7 +7,7 @@ import { detectImageType, calculateHistogram } from '../image-processor/detector
 import { cannyEdgeDetection } from '../image-processor/edge-detector.js'
 import { traceContour, findFirstBlackPixel, computeOtsuThreshold, extractAllBlackPixels } from '../image-processor/contour-tracer.js'
 import { repairBrokenContour } from '../image-processor/morphology.js'
-import { dft, pointsToComplex, complexToPoints, magnitudeSpectrum } from '../fourier-analyzer/dft.js'
+import { dft, pointsToComplex, complexToPoints, magnitudeSpectrum, realDft } from '../fourier-analyzer/dft.js'
 import { selectTermCount } from '../fourier-analyzer/adaptive-selector.js'
 import { generateFormula, generateParameterTable as generateParams } from '../fourier-analyzer/formula-generator.js'
 import { renderEpicycles } from '../renderer/epicycle-renderer.js'
@@ -293,6 +293,7 @@ export async function handleImageUpload(file) {
 
 /**
  * 执行傅里叶分析
+ * 分别对x和y坐标做独立的实数DFT
  */
 async function performFourierAnalysis() {
   const { contourPoints } = appState
@@ -303,25 +304,37 @@ async function performFourierAnalysis() {
   // 1. 归一化轮廓点
   const normalizedPoints = normalizeContour(contourPoints)
 
-  // 2. 转换为复数
-  const complexPoints = pointsToComplex(normalizedPoints)
+  // 2. 分别对x和y坐标做实数DFT
+  // 实数DFT返回 {a, b}，其中a是余弦系数，b是正弦系数
+  const xSignal = normalizedPoints.map(p => p.x)
+  const ySignal = normalizedPoints.map(p => p.y)
 
-  // 3. DFT变换
-  const coeffs = dft(complexPoints)
-  appState.fourierCoeffs = coeffs
+  const xCoeffs = realDft(xSignal)
+  const yCoeffs = realDft(ySignal)
 
-
-  // 4. 转换系数格式为 {a, b}
-  // 注意：复数 {z = x + iy} 的傅里叶变换，a是实部序列，b是虚部序列
+  // 3. 构建系数对象 {a, b, c, d}
+  // a, b = x的余弦和正弦系数
+  // c, d = y的余弦和正弦系数
   const coeffsObj = {
-    a: coeffs.map(c => c.re),
-    b: coeffs.map(c => c.im)
+    a: xCoeffs.a,
+    b: xCoeffs.b,
+    c: yCoeffs.a,
+    d: yCoeffs.b
   }
 
-  // 5. 自适应项数选择
+  // 4. 保存原始系数（用于重建验证）
+  appState.fourierCoeffs = xSignal.map((_, i) => ({
+    re: xCoeffs.a[i],
+    im: xCoeffs.b[i]
+  }))
+
+  // 5. 自适应项数选择（使用四组系数）
   const selection = selectTermCount(coeffsObj, 0.95)
   appState.termCount = selection.termCount
   appState.energyRatio = selection.energyRatio
+
+  // 6. 保存完整系数供渲染器使用
+  appState.renderCoeffs = coeffsObj
 }
 
 /**
@@ -521,25 +534,13 @@ function renderParameterTable(container, params) {
  * @param {number} t - 时间参数 (0-2π)
  */
 function renderFrame(t) {
-  if (!mainCtx || !mainCanvas || !appState.fourierCoeffs) return
+  if (!mainCtx || !mainCanvas || !appState.renderCoeffs) return
 
-  const { fourierCoeffs, trajectory } = appState
+  const { renderCoeffs, trajectory } = appState
   const { width, height } = mainCanvas
 
-  // 准备渲染参数
-  const scale = Math.min(width, height) * 0.4
-  const offsetX = width / 2
-  const offsetY = height / 2
-
-  // 准备系数（转换为轮圆渲染器需要的格式）
-  // 复数傅里叶系数：c_n = a_n + i*b_n，每个复数系数对应一个轮圆
-  const coeffs = {
-    a: fourierCoeffs.map(c => c.re),
-    b: fourierCoeffs.map(c => c.im)
-  }
-
-  // 渲染轮圆
-  renderEpicycles(mainCtx, width, height, coeffs, t, trajectory || [])
+  // 渲染轮圆（使用完整的{a,b,c,d}格式系数）
+  renderEpicycles(mainCtx, width, height, renderCoeffs, t, trajectory || [])
 
 }
 

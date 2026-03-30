@@ -248,3 +248,63 @@ export function analyzeSymmetry(coefficients) {
     symmetryScore
   }
 }
+
+/**
+ * 对实数信号做DFT（自定义正弦余弦展开）
+ * 返回正弦余弦展开系数 {a, b}
+ * 对于信号f[n]，展开为：f(t) = Σ [a[k]*cos(k*t) + b[k]*sin(k*t)]
+ * 注意：b[k] = -Σ f[n]*sin(2πkn/N) / N
+ *
+ * @param {number[]} signal - 实数信号数组
+ * @returns {{a: number[], b: number[]}} 余弦系数和正弦系数
+ */
+export function realDft(signal) {
+  const N = signal.length
+  if (N === 0) {
+    return { a: [], b: [] }
+  }
+
+  const a = new Array(N).fill(0)
+  const b = new Array(N).fill(0)
+
+  for (let k = 0; k < N; k++) {
+    let sumCos = 0
+    let sumSin = 0
+    for (let n = 0; n < N; n++) {
+      const angle = 2 * Math.PI * k * n / N
+      sumCos += signal[n] * Math.cos(angle)
+      sumSin += signal[n] * Math.sin(angle)
+    }
+    a[k] = sumCos / N
+    b[k] = -sumSin / N
+  }
+
+  return { a, b }
+}
+
+/**
+ * 使用{a,b,c,d}格式的系数重建点位置
+ * @param {number[]} a - x的余弦系数
+ * @param {number[]} b - x的正弦系数
+ * @param {number[]} c - y的余弦系数
+ * @param {number[]} d - y的正弦系数
+ * @param {number} t - 时间参数(0到2π)
+ * @returns {{x: number, y: number}} 重建的点坐标
+ */
+export function reconstructPoint(a, b, c, d, t) {
+  const N = a.length
+  let x = 0
+  let y = 0
+
+  for (let k = 0; k < N; k++) {
+    const cos_kt = Math.cos(k * t)
+    const sin_kt = Math.sin(k * t)
+
+    // x(t) = Σ [a[k]*cos(k*t) - b[k]*sin(k*t)]
+    // y(t) = Σ [c[k]*cos(k*t) - d[k]*sin(k*t)]
+    x += a[k] * cos_kt - b[k] * sin_kt
+    y += c[k] * cos_kt - d[k] * sin_kt
+  }
+
+  return { x, y }
+}
