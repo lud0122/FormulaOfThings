@@ -311,13 +311,12 @@ async function performFourierAnalysis() {
   appState.fourierCoeffs = coeffs
 
 
- // 4. 转换系数格式为 {a, b, c, d}
- const coeffsObj = {
- a: coeffs.map(c => c.re),
- b: coeffs.map(c => c.im),
- c: coeffs.map(c => c.re),
- d: coeffs.map(c => c.im)
- }
+  // 4. 转换系数格式为 {a, b}
+  // 注意：复数 {z = x + iy} 的傅里叶变换，a是实部序列，b是虚部序列
+  const coeffsObj = {
+    a: coeffs.map(c => c.re),
+    b: coeffs.map(c => c.im)
+  }
 
   // 5. 自适应项数选择
   const selection = selectTermCount(coeffsObj, 0.95)
@@ -533,21 +532,15 @@ function renderFrame(t) {
   const offsetY = height / 2
 
   // 准备系数（转换为轮圆渲染器需要的格式）
+  // 复数傅里叶系数：c_n = a_n + i*b_n，每个复数系数对应一个轮圆
   const coeffs = {
     a: fourierCoeffs.map(c => c.re),
-    b: fourierCoeffs.map(c => c.im),
-    c: fourierCoeffs.map(c => c.re), // y坐标使用相同的系数
-    d: fourierCoeffs.map(c => c.im)
+    b: fourierCoeffs.map(c => c.im)
   }
 
   // 渲染轮圆
-  const result = renderEpicycles(mainCtx, width, height, coeffs, t, trajectory || [])
+  renderEpicycles(mainCtx, width, height, coeffs, t, trajectory || [])
 
-  // 更新轨迹
-  if (!appState.trajectory) {
-    appState.trajectory = []
-  }
-  appState.trajectory.push({ x: result.penX, y: result.penY })
 }
 
 /**

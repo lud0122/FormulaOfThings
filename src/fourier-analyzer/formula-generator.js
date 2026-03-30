@@ -5,7 +5,7 @@
 
 /**
  * Generate formula strings for x(t) and y(t)
- * @param {Object} coefficients - Fourier coefficients {a, b, c, d}
+ * @param {Object} coefficients - Fourier coefficients {a, b, c, d} 或 {a, b}
  * @returns {string} Formula string representation
  */
 export function generateFormula(coefficients) {
@@ -13,10 +13,10 @@ export function generateFormula(coefficients) {
     throw new Error('Missing coefficients');
   }
 
-  const { a, b, c, d } = coefficients;
+  const { a, b, c = a, d = b } = coefficients;
 
-  if (!a || !b || !c || !d) {
-    throw new Error('Missing required coefficient arrays');
+  if (!a || !b) {
+    throw new Error('Missing required coefficient arrays (a, b)');
   }
 
   if (a.length !== b.length || a.length !== c.length || a.length !== d.length) {
@@ -34,7 +34,7 @@ export function generateFormula(coefficients) {
 
 /**
  * Generate parameter table from Fourier coefficients
- * @param {Object} coefficients - Fourier coefficients {a, b, c, d}
+ * @param {Object} coefficients - Fourier coefficients {a, b, c, d} 或 {a, b}
  * @returns {Array} Parameter table with radius, angular velocity, phase, and energy ratio
  */
 export function generateParameterTable(coefficients) {
@@ -42,10 +42,10 @@ export function generateParameterTable(coefficients) {
     throw new Error('Missing coefficients');
   }
 
-  const { a, b, c, d } = coefficients;
+  const { a, b, c = a, d = b } = coefficients;
 
-  if (!a || !b || !c || !d) {
-    throw new Error('Missing required coefficient arrays');
+  if (!a || !b) {
+    throw new Error('Missing required coefficient arrays (a, b)');
   }
 
   if (a.length !== b.length || a.length !== c.length || a.length !== d.length) {
@@ -59,14 +59,15 @@ export function generateParameterTable(coefficients) {
   const intermediateResults = [];
 
   for (let n = 0; n < termCount; n++) {
-    // Calculate radius: rₙ = sqrt(aₙ² + bₙ)
+    // 计算复数系数的模：c_n = a_n + i*b_n
+    // r_n = |c_n| = sqrt(a_n² + b_n²)
     const radiusX = Math.sqrt(a[n] * a[n] + b[n] * b[n]);
     const radiusY = Math.sqrt(c[n] * c[n] + d[n] * d[n]);
 
     // Combined radius for energy calculation
     const radius = Math.sqrt(radiusX * radiusX + radiusY * radiusY);
 
-    // Calculate phase: φₙ = atan2(bₙ, aₙ)
+    // 计算相位：φₙ = atan2(bₙ, aₙ)
     const phaseX = Math.atan2(b[n], a[n]);
     const phaseY = Math.atan2(d[n], c[n]);
 
@@ -107,7 +108,7 @@ export function generateParameterTable(coefficients) {
 
 /**
  * Export Fourier coefficients to JSON format
- * @param {Object} coefficients - Fourier coefficients {a, b, c, d}
+ * @param {Object} coefficients - Fourier coefficients {a, b, c, d} 或 {a, b}
  * @returns {Object} JSON structure with metadata, coefficients, and parameters
  */
 export function exportToJSON(coefficients) {
@@ -115,10 +116,10 @@ export function exportToJSON(coefficients) {
     throw new Error('Missing coefficients');
   }
 
-  const { a, b, c, d } = coefficients;
+  const { a, b, c = a, d = b } = coefficients;
 
-  if (!a || !b || !c || !d) {
-    throw new Error('Missing required coefficient arrays');
+  if (!a || !b) {
+    throw new Error('Missing required coefficient arrays (a, b)');
   }
 
   if (a.length !== b.length || a.length !== c.length || a.length !== d.length) {

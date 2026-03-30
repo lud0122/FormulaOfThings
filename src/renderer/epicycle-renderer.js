@@ -8,30 +8,36 @@
  * 准备渲染参数
  * 计算缩放比例和偏移量，使得图形居中且充分利用Canvas空间
  *
- * @param {Object} coeffs - 傅里叶系数 {a, b, c, d}
+ * @param {Object} coeffs - 傅里叶系数 {a, b}
  * @param {number} canvasWidth - Canvas宽度
  * @param {number} canvasHeight - Canvas高度
  * @returns {Object} 渲染参数 {scale, offsetX, offsetY}
  */
 export function prepareRenderer(coeffs, canvasWidth, canvasHeight) {
-  // 计算傅里叶级数重建轮廓的边界范围
-  // 通过采样时间参数t来估计轮廓的实际范围
-  const N = coeffs.a.length;
+  const { a, b } = coeffs;
+  const N = a.length;
+
+  // 采样傅里叶曲线以确定边界
   const sampleCount = 360; // 采样360个点
   let minX = Infinity, maxX = -Infinity;
   let minY = Infinity, maxY = -Infinity;
 
-  // 采样傅里叶曲线以确定边界
   for (let i = 0; i < sampleCount; i++) {
     const t = (i / sampleCount) * 2 * Math.PI;
     let x = 0, y = 0;
 
-    // 重建点的位置（累积所有频率分量）
+    // 使用正确的傅里叶级数重建公式（笛卡尔形式）
+    // z(t) = Σ c_n * e^(i*n*t)，其中 c_n = a_n + i*b_n
+    // x(t) = Σ [a_n * cos(n*t) - b_n * sin(n*t)]
+    // y(t) = Σ [a_n * sin(n*t) + b_n * cos(n*t)]
     for (let n = 0; n < N; n++) {
-      const r = Math.sqrt(coeffs.a[n] ** 2 + coeffs.b[n] ** 2);
-      const angle = n * t + Math.atan2(coeffs.b[n], coeffs.a[n]);
-      x += r * Math.cos(angle);
-      y += r * Math.sin(angle);
+      const cos_nt = Math.cos(n * t);
+      const sin_nt = Math.sin(n * t);
+      // z_n(t) = c_n * e^(i*n*t) = (a_n + i*b_n) * (cos(n*t) + i*sin(n*t))
+      // 实部: a_n*cos - b_n*sin
+      // 虚部: a_n*sin + b_n*cos
+      x += a[n] * cos_nt - b[n] * sin_nt;
+      y += a[n] * sin_nt + b[n] * cos_nt;
     }
 
     minX = Math.min(minX, x);
@@ -70,14 +76,14 @@ export function prepareRenderer(coeffs, canvasWidth, canvasHeight) {
  * @param {CanvasRenderingContext2D} ctx - Canvas 2D上下文
  * @param {number} canvasWidth - Canvas宽度
  * @param {number} canvasHeight - Canvas高度
- * @param {Object} coeffs - 傅里叶系数 {a, b, c, d}
+ * @param {Object} coeffs - 傅里叶系数 {a, b, c, d}，其中c和d应该与a和b相同
  * @param {number} t - 时间参数（弧度）
  * @param {Array} trajectory - 轨迹点数组（会被修改）
  * @returns {undefined}
  */
 export function renderEpicycles(ctx, canvasWidth, canvasHeight, coeffs, t, trajectory) {
   // 参数验证：检查系数完整性
-  if (!coeffs || !coeffs.a || !coeffs.b || !coeffs.c || !coeffs.d) {
+  if (!coeffs || !coeffs.a || !coeffs.b) {
     console.error('Invalid coefficients');
     return { penX: 0, penY: 0 };
   }
@@ -88,7 +94,7 @@ export function renderEpicycles(ctx, canvasWidth, canvasHeight, coeffs, t, traje
     return { penX: 0, penY: 0 };
   }
 
-  const { a, b, c, d } = coeffs;
+  const { a, b } = coeffs;
   const N = a.length;
 
   // 准备渲染参数
@@ -103,11 +109,15 @@ export function renderEpicycles(ctx, canvasWidth, canvasHeight, coeffs, t, traje
 
   // 绘制每个轮圆
   for (let n = 0; n < N; n++) {
-    // 计算当前圆的半径（使用x和y分量的欧几里得距离）
+    // 计算复数系数 c_n = a_n + i*b_n
+    // |c_n| = sqrt(a_n^2 + b_n^2) 是轮圆的半径
     const r = Math.sqrt(a[n] ** 2 + b[n] ** 2);
 
-    // 计算当前圆的旋转角度
-    const angle = n * t + Math.atan2(b[n], a[n]);
+    // 计算当前圆的相位角
+    const phase = Math.atan2(b[n], a[n]);
+
+    // 计算旋转后的角度（傅里叶级数：每个频率分量旋转 n*t）
+    const angle = phase + n * t;
 
     // 转换为Canvas坐标
     const canvasCx = offsetX + cx * scale;
@@ -120,8 +130,15 @@ export function renderEpicycles(ctx, canvasWidth, canvasHeight, coeffs, t, traje
     ctx.stroke();
 
     // 计算下一个圆心位置（圆周上的点）
-    const px = cx + r * Math.cos(angle);
-    const py = cy + r * Math.sin(angle);
+    // c_n * e^(i*n*t) = (a_n + i*b_n) * (cos(n*t) + i*sin(n*t))
+    // 实部: a_n*cos - b_n*sin
+    // 虚部: a_n*sin + b_n*cos
+    const cos_nt = Math.cos(n * t);
+    const sin_nt = Math.sin(n * t);
+    const dx = a[n] * cos_nt - b[n] * sin_nt;
+    const dy = a[n] * sin_nt + b[n] * cos_nt;
+    const px = cx + dx;
+    const py = cy + dy;
 
     // 绘制半径线（从圆心到圆周）
     ctx.beginPath();

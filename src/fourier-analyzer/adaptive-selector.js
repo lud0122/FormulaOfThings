@@ -5,17 +5,20 @@
 
 /**
  * 根据能量占比选择傅里叶项数
- * @param {Object} coeffs - 傅里叶系数 {a, b, c, d}
+ * @param {Object} coeffs - 傅里叶系数 {a, b, c, d} 或 {a, b}
  * @param {number} energyThreshold - 能量阈值（默认0.95）
  * @returns {Object} 选择结果 {termCount, energyRatio, selectedIndices, energies}
  */
 export function selectTermCount(coeffs, energyThreshold = 0.95) {
+  // 支持两种格式：{a, b, c, d} 或 {a, b}
+  const { a, b, c = a, d = b } = coeffs;
+
   // 输入验证：检查系数完整性
-  if (!coeffs.a || !coeffs.b || !coeffs.c || !coeffs.d) {
-    throw new Error('INVALID_COEFFICIENTS: 傅里叶系数不完整');
+  if (!a || !b) {
+    throw new Error('INVALID_COEFFICIENTS: 傅里叶系数不完整（需要a和b）');
   }
 
-  const N = coeffs.a.length;
+  const N = a.length;
 
   // 输入验证：检查系数非空
   if (N === 0) {
@@ -31,14 +34,14 @@ export function selectTermCount(coeffs, energyThreshold = 0.95) {
   const energies = [];
   for (let k = 0; k < N; k++) {
     // 验证系数有效性
-    if (!Number.isFinite(coeffs.a[k]) || !Number.isFinite(coeffs.b[k]) ||
-        !Number.isFinite(coeffs.c[k]) || !Number.isFinite(coeffs.d[k])) {
+    if (!Number.isFinite(a[k]) || !Number.isFinite(b[k]) ||
+        !Number.isFinite(c[k]) || !Number.isFinite(d[k])) {
       throw new Error(`INVALID_COEFFICIENT: 索引${k}存在NaN或Infinity`);
     }
 
-    const energyX = coeffs.a[k] ** 2 + coeffs.b[k] ** 2;
-    const energyY = coeffs.c[k] ** 2 + coeffs.d[k] ** 2;
-    energies.push({ k, energy: energyX + energyY });
+    // 对于复数傅里叶系数 c_n = a_n + i*b_n，能量 = |c_n|² = a_n² + b_n²
+    const energy = a[k] ** 2 + b[k] ** 2 + c[k] ** 2 + d[k] ** 2;
+    energies.push({ k, energy });
   }
 
   // 按能量降序排序（关键！）

@@ -13,10 +13,10 @@ describe('adaptive-selector', () => {
     });
 
     it('应该拒绝不完整的系数', () => {
-      const coeffs = { a: [1, 2], b: [3, 4] };
+      const coeffs = { c: [1, 2], d: [3, 4] }; // 缺少a和b
       assert.throws(
         () => selectTermCount(coeffs),
-        { message: 'INVALID_COEFFICIENTS: 傅里叶系数不完整' }
+        { message: 'INVALID_COEFFICIENTS: 傅里叶系数不完整（需要a和b）' }
       );
     });
 
@@ -152,21 +152,21 @@ describe('adaptive-selector', () => {
       assert.ok(result.energyRatio >= 0.99);
     });
 
-    it('应该正确计算能量', () => {
-      const coeffs = {
-        a: [3, 0, 0],  // energyX: 3^2+0^2 = 9
-        b: [0, 0, 0],
-        c: [0, 0, 0],  // energyY: 0^2+0^2 = 0
-        d: [0, 0, 0]
-      };
-      // 第0项总能量: 9 + 0 = 9
+  it("应该正确计算能量", () => {
+    const coeffs = {
+      a: [3, 0, 0],
+      b: [0, 0, 0],
+      c: [0, 0, 0],
+      d: [0, 0, 0]
+    };
+    // u80fdu91cf = au00b2 + bu00b2 + cu00b2 + du00b2 = 9 + 0 + 0 + 0 = 9
 
-      const result = selectTermCount(coeffs, 0.95);
+    const result = selectTermCount(coeffs, 0.95);
 
-      // 第一个项应该被选中
-      assert.ok(result.selectedIndices.includes(0));
-      assert.strictEqual(result.energies[0].energy, 9);
-    });
+    // u7b2cu4e00u4e2au9879u5e94u8be5u88abu9009u4e2d
+    assert.ok(result.selectedIndices.includes(0));
+    assert.strictEqual(result.energies[0].energy, 9);
+  });
   });
 
   describe('边界情况', () => {
