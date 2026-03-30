@@ -28,8 +28,23 @@ export function extractAllBlackPixels(binaryImage, sampleStep = 5) {
   const { width, height, data } = binaryImage
   const points = []
 
-  for (let y = 0; y < height; y += sampleStep) {
-    for (let x = 0; x < width; x += sampleStep) {
+  // 动态调整采样步长：基于黑色像素密度
+  let blackPixelCount = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i] <= 128 && data[i + 1] <= 128 && data[i + 2] <= 128) {
+      blackPixelCount++;
+    }
+  }
+
+  // 根据黑色像素数量动态调整步长
+  // 目标：提取500-2000个点，既能准确描绘轮廓，又不会过度拟合
+  const targetPoints = Math.min(Math.max(blackPixelCount * 0.1, 500), 2000);
+  const dynamicStep = Math.max(1, Math.floor(Math.sqrt(blackPixelCount / targetPoints)));
+
+  console.log(`[extractAllBlackPixels] 黑色像素=${blackPixelCount}, 动态步长=${dynamicStep}, 目标点数=${targetPoints}`);
+
+  for (let y = 0; y < height; y += dynamicStep) {
+    for (let x = 0; x < width; x += dynamicStep) {
       const i = (y * width + x) * 4
       // 如果是黑色像素（轮廓）
       if (data[i] <= 128 && data[i + 1] <= 128 && data[i + 2] <= 128) {
@@ -38,7 +53,7 @@ export function extractAllBlackPixels(binaryImage, sampleStep = 5) {
     }
   }
 
-  console.log(`[extractAllBlackPixels] 采样步长=${sampleStep}, 提取点数=${points.length}`)
+  console.log(`[extractAllBlackPixels] 实际提取点数=${points.length}`)
   return points
 }
 

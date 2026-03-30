@@ -239,12 +239,12 @@ export async function handleImageUpload(file) {
  // 如果追踪点数太少（< 50），说明轮廓断裂严重，改用全像素提取
  if (contour.length < 50) {
  console.log(`[轮廓提取] 点数过少，改用全像素提取模式`)
- contour = extractAllBlackPixels(repairedData, 10) // 每10个像素采样一次
+ contour = extractAllBlackPixels(repairedData) // 每10个像素采样一次
  }
  } catch (error) {
  // 如果传统追踪失败，使用全像素提取
  console.log(`[轮廓提取] 传统追踪失败: ${error.message}，改用全像素提取模式`)
- contour = extractAllBlackPixels(repairedData, 10)
+ contour = extractAllBlackPixels(repairedData)
  }
 
 
