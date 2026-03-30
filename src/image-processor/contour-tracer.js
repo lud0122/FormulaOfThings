@@ -19,7 +19,48 @@ const DIRECTIONS = [
 ]
 
 /**
+ * 检查像素是否为边界像素（至少有一个相邻白色像素的黑色像素）
+ * @param {ImageData} image - 二值图像
+ * @param {number} x - x坐标
+ * @param {number} y - y坐标
+ * @returns {boolean} 是否为边界像素
+ */
+function isBoundaryPixel(image, x, y) {
+  const { width, height, data } = image
+
+  // 检查当前像素是否为黑色
+  const i = (y * width + x) * 4
+  if (data[i] > 128 || data[i + 1] > 128 || data[i + 2] > 128) {
+    return false // 不是黑色像素
+  }
+
+  // 检查8个相邻像素，如果有一个是白色，则当前像素是边界像素
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (dx === 0 && dy === 0) continue // 跳过自身
+
+      const nx = x + dx
+      const ny = y + dy
+
+      // 边界检查
+      if (nx < 0 || nx >= width || ny < 0 || ny >= height) {
+        return true // 图像边缘的黑色像素视为边界
+      }
+
+      const ni = (ny * width + nx) * 4
+      // 如果相邻像素是白色（背景）
+      if (data[ni] > 128 || data[ni + 1] > 128 || data[ni + 2] > 128) {
+        return true
+      }
+    }
+  }
+
+  return false // 所有相邻像素都是黑色，说明是内部像素
+}
+
+/**
  * 提取所有黑色像素作为轮廓点（用于断裂轮廓的情况）
+ * 只提取边界像素，跳过内部填充区域
  * @param {ImageData} binaryImage - 二值图像
  * @param {number} sampleStep - 采样步长（每隔N个像素取一个点）
  * @returns {Array<{x: number, y: number}>} 轮廓点数组
@@ -28,29 +69,37 @@ export function extractAllBlackPixels(binaryImage, sampleStep = 5) {
   const { width, height, data } = binaryImage
   const points = []
 
-  // 动态调整采样步长：基于黑色像素密度
-  let blackPixelCount = 0;
+  // 统计黑色像素和边界像素数量
+  let blackPixelCount = 0
+  let boundaryPixelCount = 0
+
   for (let i = 0; i < data.length; i += 4) {
     if (data[i] <= 128 && data[i + 1] <= 128 && data[i + 2] <= 128) {
-      blackPixelCount++;
+      blackPixelCount++
     }
   }
 
-  // 根据黑色像素数量动态调整步长
-  // 目标：提取500-2000个点，既能准确描绘轮廓，又不会过度拟合
-  const targetPoints = Math.min(Math.max(blackPixelCount * 0.1, 500), 2000);
-  const dynamicStep = Math.max(1, Math.floor(Math.sqrt(blackPixelCount / targetPoints)));
-
-  console.log(`[extractAllBlackPixels] 黑色像素=${blackPixelCount}, 动态步长=${dynamicStep}, 目标点数=${targetPoints}`);
-
-  for (let y = 0; y < height; y += dynamicStep) {
-    for (let x = 0; x < width; x += dynamicStep) {
-      const i = (y * width + x) * 4
-      // 如果是黑色像素（轮廓）
-      if (data[i] <= 128 && data[i + 1] <= 128 && data[i + 2] <= 128) {
-        points.push({ x, y })
+  // 先收集所有边界像素
+  const boundaryPixels = []
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (isBoundaryPixel(binaryImage, x, y)) {
+        boundaryPixels.push({ x, y })
+        boundaryPixelCount++
       }
     }
+  }
+
+  // 根据边界像素数量动态调整步长
+  // 目标：提取500-2000个点，既能准确描绘轮廓，又不会过度拟合
+  const targetPoints = Math.min(Math.max(boundaryPixelCount * 0.2, 500), 2000)
+  const dynamicStep = Math.max(1, Math.floor(boundaryPixelCount / targetPoints))
+
+  console.log(`[extractAllBlackPixels] 黑色像素=${blackPixelCount}, 边界像素=${boundaryPixelCount}, 动态步长=${dynamicStep}, 目标点数=${targetPoints}`)
+
+  // 从边界像素中采样
+  for (let i = 0; i < boundaryPixels.length; i += dynamicStep) {
+    points.push(boundaryPixels[i])
   }
 
   console.log(`[extractAllBlackPixels] 实际提取点数=${points.length}`)
