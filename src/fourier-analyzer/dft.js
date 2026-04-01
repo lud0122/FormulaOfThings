@@ -155,7 +155,7 @@ export function phaseSpectrum(coefficients) {
 }
 
 /**
- * 获取按幅度排序的系数索引（用于自适应选择）
+ * 获取按幅度排序的系数索引
  * @param {Complex[]} coefficients
  * @returns {Array<{index: number, magnitude: number}>}
  */
@@ -253,7 +253,8 @@ export function analyzeSymmetry(coefficients) {
  * 对实数信号做DFT（自定义正弦余弦展开）
  * 返回正弦余弦展开系数 {a, b}
  * 对于信号f[n]，展开为：f(t) = Σ [a[k]*cos(k*t) + b[k]*sin(k*t)]
- * 注意：b[k] = -Σ f[n]*sin(2πkn/N) / N
+ * 注意：这里使用标准定义 b[k] = -(1/N) * Σ f[n] * sin(2πkn/N)
+ * 这样重建时使用：f(t) = Σ [a[k]*cos(k*t) - b[k]*sin(k*t)]
  *
  * @param {number[]} signal - 实数信号数组
  * @returns {{a: number[], b: number[]}} 余弦系数和正弦系数
@@ -276,7 +277,7 @@ export function realDft(signal) {
       sumSin += signal[n] * Math.sin(angle)
     }
     a[k] = sumCos / N
-    b[k] = sumSin / N  // 去掉负号，重建公式中统一使用 -b*sin(kt)
+    b[k] = -sumSin / N  // 标准定义，保留负号
   }
 
   return { a, b }

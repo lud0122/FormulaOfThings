@@ -311,6 +311,10 @@ async function performFourierAnalysis() {
   // 3. 构建系数对象 {a, b, c, d}
   // a, b = x的余弦和正弦系数
   // c, d = y的余弦和正弦系数
+  // realDft返回的b系数已包含负号，重建用 Σ [a*cos(kt) - (-b)*sin(kt)]
+  // 但我们需要的是 Σ [c*cos(kt) - d*sin(kt)]
+  // 由于realDft的b = -<sin投影>，所以 reconstruction中的 -b*sin 实际上是 +<sin投影>*sin
+  // 为了保持坐标系统一致，现在直接使用realDft的输出
   const coeffsObj = {
     a: xCoeffs.a,
     b: xCoeffs.b,
