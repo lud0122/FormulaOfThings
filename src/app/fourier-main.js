@@ -5,7 +5,7 @@
 
 import { detectImageType, calculateHistogram } from '../image-processor/detector.js'
 import { cannyEdgeDetection } from '../image-processor/edge-detector.js'
-import { traceContour, findFirstBlackPixel, computeOtsuThreshold, extractAllBlackPixels } from '../image-processor/contour-tracer.js'
+import { traceContour, findFirstBlackPixel, computeOtsuThreshold, extractAllBlackPixels, extractContourFromLineArt } from '../image-processor/contour-tracer.js'
 import { repairBrokenContour } from '../image-processor/morphology.js'
 import { dft, pointsToComplex, complexToPoints, magnitudeSpectrum, realDft } from '../fourier-analyzer/dft.js'
 import { selectTermCount } from '../fourier-analyzer/adaptive-selector.js'
@@ -218,37 +218,33 @@ export async function handleImageUpload(file) {
     appState.imageType = detection.type
 
     // 5. 提取轮廓
-    let contour
-    if (appState.imageType === 'contour') {
-      // 纯轮廓图：二值化 → 形态学修复 → 追踪
+  let contour
+  if (appState.imageType === 'contour') {
+    // 纯轮廓图：专用边界提取（避免内部填充）
+    console.log(`[轮廓提取] 图像类型: ${appState.imageType}`)
+
+    // 直接使用专用线框图边界提取，从原始图像提取真正的边界
+    // 避免二值化和形态学操作导致的内部填充问题
+    contour = extractContourFromLineArt(imageData)
+    console.log(`[轮廓提取] 专用线框图边界提取完成, 点数: ${contour.length}`)
+
+    // 如果专用提取失败，尝试备选方案
+    if (contour.length < 50) {
+      console.log(`[轮廓提取] 专用提取点数过少，尝试备选方案`)
       const threshold = computeOtsuThreshold(imageData)
-    console.log(`[轮廓提取] 图像类型: ${appState.imageType}, Otsu阈值: ${threshold}`)
-  const binaryData = binaryize(imageData, threshold)
-    console.log(`[轮廓提取] 二值化完成, 图像尺寸: ${binaryData.width}x${binaryData.height}`)
-
- // 形态学修复：连接断裂的轮廓线
- const repairedData = repairBrokenContour(binaryData)
- console.log(`[轮廓提取] 形态学修复完成`)
-
-
- // 尝试使用传统轮廓追踪
- try {
- contour = traceContour(repairedData)
- console.log(`[轮廓提取] 传统追踪完成, 点数: ${contour.length}`)
-
- // 如果追踪点数太少（< 50），说明轮廓断裂严重，改用全像素提取
- if (contour.length < 50) {
- console.log(`[轮廓提取] 点数过少，改用全像素提取模式`)
- contour = extractAllBlackPixels(repairedData) // 每10个像素采样一次
- }
- } catch (error) {
- // 如果传统追踪失败，使用全像素提取
- console.log(`[轮廓提取] 传统追踪失败: ${error.message}，改用全像素提取模式`)
- contour = extractAllBlackPixels(repairedData)
- }
-
-
-      setStatus('提取完成')
+      const binaryData = binaryize(imageData, threshold)
+      const repairedData = repairBrokenContour(binaryData)
+      try {
+        contour = traceContour(repairedData)
+        if (contour.length < 50) {
+          contour = extractAllBlackPixels(repairedData)
+        }
+      } catch (error) {
+        contour = extractAllBlackPixels(repairedData)
+      }
+      console.log(`[轮廓提取] 备选方法完成, 点数: ${contour.length}`)
+    }
+    setStatus('提取完成')
     console.log(`[轮廓提取] 轮廓追踪完成, 点数: ${contour.length}`)
     if (contour.length <= 10) {
         console.log(`[轮廓点坐标]`, contour.map(p => `(${p.x.toFixed(1)}, ${p.y.toFixed(1)})`).join(', '))

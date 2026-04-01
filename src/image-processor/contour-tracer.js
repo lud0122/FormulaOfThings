@@ -59,8 +59,8 @@ function isBoundaryPixel(image, x, y) {
 }
 
 /**
- * 提取所有黑色像素作为轮廓点（用于断裂轮廓的情况）
- * 只提取边界像素，跳过内部填充区域
+ * 从二值图像提取边界像素（跳过内部填充区域）
+ * 关键：只提取有白色邻居的边界像素，避免提取闭合轮廓内部的填充区域
  * @param {ImageData} binaryImage - 二值图像
  * @param {number} sampleStep - 采样步长（每隔N个像素取一个点）
  * @returns {Array<{x: number, y: number}>} 轮廓点数组
@@ -340,4 +340,103 @@ export function computeOtsuThreshold(image) {
   }
 
   return bestThreshold
+}
+
+/**
+ * 从轮廓线框图提取边界（专用算法，避免内部填充问题）
+ * 直接从原始图像中提取深色边缘像素
+ * @param {ImageData} imageData - 原始图像数据
+ * @returns {Array<{x: number, y: number}>} 轮廓点数组
+ */
+export function extractContourFromLineArt(imageData) {
+  const { width, height, data } = imageData
+  const points = []
+
+  // 步骤1：计算自适应阈值
+  // 使用较低的阈值来确保捕捉到细的轮廓线
+  let totalGray = 0
+  let pixelCount = 0
+  for (let i = 0; i < data.length; i += 4) {
+    const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
+    totalGray += gray
+    pixelCount++
+  }
+  const meanGray = totalGray / pixelCount
+  // 使用比平均值稍低的阈值，确保能够捕捉到深色轮廓线
+  const threshold = Math.min(meanGray * 0.7, 100)
+
+  console.log(`[extractContourFromLineArt] 平均灰度=${meanGray.toFixed(1)}, 阈值=${threshold}`)
+
+  // 步骤2：提取候选轮廓像素（深色像素）
+  const candidatePixels = []
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4
+      const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
+      if (gray < threshold) {
+        candidatePixels.push({ x, y, gray })
+      }
+    }
+  }
+
+  console.log(`[extractContourFromLineArt] 候选像素数=${candidatePixels.length}`)
+
+  // 步骤3：从候选像素中只提取边界像素
+  // 创建快速查找表
+  const pixelMap = new Map()
+  for (const p of candidatePixels) {
+    pixelMap.set(`${p.x},${p.y}`, p.gray)
+  }
+
+  // 检查是否是边界像素（至少有一个白色邻居的深色像素）
+  const boundaryPixels = []
+  for (const pixel of candidatePixels) {
+    let hasLightNeighbor = false
+
+    // 检查8个邻居
+    for (let dy = -1; dy <= 1 && !hasLightNeighbor; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue
+
+        const nx = pixel.x + dx
+        const ny = pixel.y + dy
+
+        // 边界检查
+        if (nx < 0 || nx >= width || ny < 0 || ny >= height) {
+          hasLightNeighbor = true
+          break
+        }
+
+        // 如果邻居不是深色像素，当前像素是边界
+        if (!pixelMap.has(`${nx},${ny}`)) {
+          hasLightNeighbor = true
+          break
+        }
+      }
+    }
+
+    if (hasLightNeighbor) {
+      boundaryPixels.push(pixel)
+    }
+  }
+
+  console.log(`[extractContourFromLineArt] 边界像素数=${boundaryPixels.length}`)
+
+  // 步骤4：动态采样
+  if (boundaryPixels.length === 0) {
+    return []
+  }
+
+  // 目标点数：500-2000
+  const targetPoints = Math.min(Math.max(boundaryPixels.length * 0.2, 500), 2000)
+  const step = Math.max(1, Math.floor(boundaryPixels.length / targetPoints))
+
+  console.log(`[extractContourFromLineArt] 步长=${step}, 目标点数=${targetPoints}`)
+
+  for (let i = 0; i < boundaryPixels.length; i += step) {
+    points.push({ x: boundaryPixels[i].x, y: boundaryPixels[i].y })
+  }
+
+  console.log(`[extractContourFromLineArt] 最终点数=${points.length}`)
+  return points
 }
