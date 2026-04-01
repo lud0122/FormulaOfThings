@@ -68,12 +68,34 @@ export function prepareRenderer(coeffs, canvasWidth, canvasHeight) {
 }
 
 /**
+ * 计算给定时间t的笔尖位置
+ * @param {Object} coeffs - 傅里叶系数
+ * @param {number} t - 时间参数
+ * @returns {{x: number, y: number}} 笔尖位置（归一化坐标）
+ */
+function calculatePenPosition(coeffs, t) {
+  const { a, b, c = a, d = b } = coeffs;
+  const N = a.length;
+
+  let x = 0, y = 0;
+  for (let k = 0; k < N; k++) {
+    const cos_kt = Math.cos(k * t);
+    const sin_kt = Math.sin(k * t);
+    x += a[k] * cos_kt - b[k] * sin_kt;
+    y += c[k] * cos_kt - d[k] * sin_kt;
+  }
+
+  return { x, y };
+}
+
+/**
  * 渲染单帧轮圆动画
+ * 只绘制红色轮廓轨迹，不显示轮圆可视化
  *
  * @param {CanvasRenderingContext2D} ctx - Canvas 2D上下文
  * @param {number} canvasWidth - Canvas宽度
  * @param {number} canvasHeight - Canvas高度
- * @param {Object} coeffs - 傅里叶系数 {a, b, c, d}，其中c和d应该与a和b相同
+ * @param {Object} coeffs - 傅里叶系数 {a, b, c, d}
  * @param {number} t - 时间参数（弧度）
  * @param {Array} trajectory - 轨迹点数组（会被修改）
  * @returns {undefined}
@@ -91,89 +113,21 @@ export function renderEpicycles(ctx, canvasWidth, canvasHeight, coeffs, t, traje
     return { penX: 0, penY: 0 };
   }
 
-  // 支持 {a,b,c,d} 格式（推荐）和 {a,b} 格式（兼容旧代码）
-  // a,b = x方向的余弦/正弦系数
-  // c,d = y方向的余弦/正弦系数
-  const { a, b, c = a, d = b } = coeffs;
-  const N = a.length;
-
   // 准备渲染参数
   const { scale, offsetX, offsetY } = prepareRenderer(coeffs, canvasWidth, canvasHeight);
 
   // 清空画布
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-  // 初始化圆心位置（归一化坐标）
-  let cx = 0;
-  let cy = 0;
-
-  // 绘制每个轮圆
-  // x(t) = Σ [a_k*cos(k*t) - b_k*sin(k*t)]
-  // y(t) = Σ [c_k*cos(k*t) - d_k*sin(k*t)]
-  for (let k = 0; k < N; k++) {
-    const cos_kt = Math.cos(k * t);
-    const sin_kt = Math.sin(k * t);
-
-    // 当前圆心位置的Canvas坐标
-    const canvasCx = offsetX + cx * scale;
-    const canvasCy = offsetY + cy * scale;
-
-    // 计算x方向的分量：vx = a_k*cos(kt) - b_k*sin(kt)
-    const vx = a[k] * cos_kt - b[k] * sin_kt;
-    // 计算y方向的分量：vy = c_k*cos(kt) - d_k*sin(kt)
-    const vy = c[k] * cos_kt - d[k] * sin_kt;
-
-    // 计算x方向轮圆（用于可视化x分量）
-    const rx = Math.sqrt(a[k] ** 2 + b[k] ** 2);
-    if (rx > 0.001) {
-      // 绘制x方向轮圆（蓝色）
-      ctx.beginPath();
-      ctx.arc(canvasCx, canvasCy, rx * scale, 0, 2 * Math.PI);
-      ctx.strokeStyle = 'rgba(100, 149, 237, 0.15)';
-      ctx.stroke();
-    }
-
-    // 计算y方向轮圆（用于可视化y分量）
-    const ry = Math.sqrt(c[k] ** 2 + d[k] ** 2);
-    if (ry > 0.001) {
-      // y方向的轮圆以(cx, cy+vy)为中心
-      ctx.beginPath();
-      ctx.arc(canvasCx, canvasCy + vy * scale, ry * scale, 0, 2 * Math.PI);
-      ctx.strokeStyle = 'rgba(100, 237, 149, 0.15)';
-      ctx.stroke();
-    }
-
-    // 计算下一个位置（累加x和y分量）
-    const px = cx + vx;
-    const py = cy + vy;
-
-    // 绘制从当前位置到新位置的向量
-    ctx.beginPath();
-    ctx.moveTo(canvasCx, canvasCy);
-    ctx.lineTo(offsetX + px * scale, offsetY + py * scale);
-    ctx.strokeStyle = 'rgba(200, 200, 200, 0.3)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    // 更新圆心位置
-    cx = px;
-    cy = py;
-  }
-
-  // 最终笔尖位置的Canvas坐标
-  const penX = offsetX + cx * scale;
-  const penY = offsetY + cy * scale;
-
-  // 绘制红色笔尖
-  ctx.beginPath();
-  ctx.arc(penX, penY, 5, 0, 2 * Math.PI);
-  ctx.fillStyle = 'red';
-  ctx.fill();
+  // 计算当前笔尖位置
+  const { x: px, y: py } = calculatePenPosition(coeffs, t);
+  const penX = offsetX + px * scale;
+  const penY = offsetY + py * scale;
 
   // 累积轨迹点（Canvas坐标）
   trajectory.push({ x: penX, y: penY });
 
-  // 绘制红色轮廓轨迹线（与预览保持一致）
+  // 只绘制红色轮廓轨迹线（与预览保持一致）
   if (trajectory.length > 1) {
     ctx.beginPath();
     ctx.moveTo(trajectory[0].x, trajectory[0].y);
@@ -184,6 +138,12 @@ export function renderEpicycles(ctx, canvasWidth, canvasHeight, coeffs, t, traje
     ctx.lineWidth = 2;
     ctx.stroke();
   }
+
+  // 可选：绘制红色笔尖点（表示当前位置）
+  ctx.beginPath();
+  ctx.arc(penX, penY, 3, 0, 2 * Math.PI);
+  ctx.fillStyle = 'red';
+  ctx.fill();
 
   // 返回笔尖位置（供外部使用）
   return { penX, penY };
