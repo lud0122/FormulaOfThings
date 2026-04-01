@@ -452,23 +452,99 @@ export function extractContourFromLineArt(imageData) {
   for (let i = 0; i < skeleton.length; i++) if (skeleton[i] === 1) count++
   console.log(`[extractContourFromLineArt] 骨架迭代=${iterations}, 像素=${count}`)
 
-  // 步骤4：收集点
-  const skeletonPoints = []
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      if (skeleton[y * width + x] === 1) skeletonPoints.push({ x, y })
-    }
-  }
+  // 步骤4：沿着骨架路径追踪收集点（保持轮廓连通顺序）
+  const orderedPoints = traceSkeletonPath(skeleton, width, height)
 
-  if (skeletonPoints.length === 0) return []
+  if (orderedPoints.length === 0) return []
 
-  const step = Math.max(1, Math.floor(skeletonPoints.length / 1500))
+  console.log(`[extractContourFromLineArt] 路径追踪后点数=${orderedPoints.length}`)
+
+  // 动态采样：保持轮廓形状的同时减少点数
+  const targetPoints = Math.min(Math.max(orderedPoints.length * 0.3, 500), 1500)
+  const step = Math.max(1, Math.floor(orderedPoints.length / targetPoints))
   console.log(`[extractContourFromLineArt] 采样步长=${step}`)
 
-  for (let i = 0; i < skeletonPoints.length; i += step) {
-    points.push({ x: skeletonPoints[i].x, y: skeletonPoints[i].y })
+  for (let i = 0; i < orderedPoints.length; i += step) {
+    points.push(orderedPoints[i])
   }
 
   console.log(`[extractContourFromLineArt] 最终点数=${points.length}`)
+  return points
+}
+
+/**
+ * 沿着骨架路径追踪，按轮廓连通顺序收集点
+ * 从骨架像素中找到一条连续的路径
+ * @param {Uint8Array} skeleton - 骨架二值数组
+ * @param {number} width - 图像宽度
+ * @param {number} height - 图像高度
+ * @returns {Array<{x: number, y: number}>} 按路径顺序的点数组
+ */
+function traceSkeletonPath(skeleton, width, height) {
+  const points = []
+  const visited = new Uint8Array(width * height)
+
+  // 找到第一个骨架像素作为起点
+  let startX = -1, startY = -1
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      if (skeleton[y * width + x] === 1) {
+        startX = x
+        startY = y
+        break
+      }
+    }
+    if (startX >= 0) break
+  }
+
+  if (startX < 0) return []
+
+  // 使用深度优先搜索追踪骨架路径
+  function traceFromPoint(x, y) {
+    const stack = [{ x, y }]
+
+    while (stack.length > 0) {
+      const current = stack.pop()
+      const idx = current.y * width + current.x
+
+      if (visited[idx] || skeleton[idx] === 0) continue
+
+      visited[idx] = 1
+      points.push({ x: current.x, y: current.y })
+
+      // 按8方向探索邻居，优先选择未访问的骨架像素
+      const neighbors = [
+        { dx: 1, dy: 0 }, { dx: -1, dy: 0 },
+        { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
+        { dx: 1, dy: 1 }, { dx: -1, dy: -1 },
+        { dx: 1, dy: -1 }, { dx: -1, dy: 1 }
+      ]
+
+      for (const { dx, dy } of neighbors) {
+        const nx = current.x + dx
+        const ny = current.y + dy
+        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+          const nidx = ny * width + nx
+          if (!visited[nidx] && skeleton[nidx] === 1) {
+            stack.push({ x: nx, y: ny })
+          }
+        }
+      }
+    }
+  }
+
+  // 从起点开始追踪
+  traceFromPoint(startX, startY)
+
+  // 检查是否有未访问的骨架像素（多个连通区域）
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      if (skeleton[y * width + x] === 1 && !visited[y * width + x]) {
+        // 发现新的连通区域，继续追踪
+        traceFromPoint(x, y)
+      }
+    }
+  }
+
   return points
 }
