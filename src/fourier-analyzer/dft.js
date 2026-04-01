@@ -276,7 +276,7 @@ export function realDft(signal) {
       sumSin += signal[n] * Math.sin(angle)
     }
     a[k] = sumCos / N
-    b[k] = -sumSin / N
+    b[k] = sumSin / N  // 去掉负号，重建公式中统一使用 -b*sin(kt)
   }
 
   return { a, b }

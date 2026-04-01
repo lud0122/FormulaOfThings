@@ -481,8 +481,8 @@ export function extractContourFromLineArt(imageData) {
  * @returns {Array<{x: number, y: number}>} 按路径顺序的点数组
  */
 function traceSkeletonPath(skeleton, width, height) {
-  const points = []
   const visited = new Uint8Array(width * height)
+  const points = []
 
   // 找到第一个骨架像素作为起点
   let startX = -1, startY = -1
@@ -499,49 +499,64 @@ function traceSkeletonPath(skeleton, width, height) {
 
   if (startX < 0) return []
 
-  // 使用深度优先搜索追踪骨架路径
-  function traceFromPoint(x, y) {
-    const stack = [{ x, y }]
+  // 沿着骨架路径行走，保持轮廓连通顺序
+  function walkContour(startX, startY) {
+    let x = startX, y = startY
+    const startIdx = y * width + x
 
-    while (stack.length > 0) {
-      const current = stack.pop()
-      const idx = current.y * width + current.x
+    while (true) {
+      const idx = y * width + x
 
-      if (visited[idx] || skeleton[idx] === 0) continue
+      // 如果回到起点，完成
+      if (visited[idx]) {
+        if (x === startX && y === startY && points.length > 1) {
+          break
+        }
+        // 如果遇到非起点的已访问点，说明有问题，但也退出
+        break
+      }
 
       visited[idx] = 1
-      points.push({ x: current.x, y: current.y })
+      points.push({ x, y })
 
-      // 按8方向探索邻居，优先选择未访问的骨架像素
+      // 寻找下一个未访问的相邻骨架像素
+      // 8方向，按顺时针顺序
       const neighbors = [
-        { dx: 1, dy: 0 }, { dx: -1, dy: 0 },
-        { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
-        { dx: 1, dy: 1 }, { dx: -1, dy: -1 },
-        { dx: 1, dy: -1 }, { dx: -1, dy: 1 }
+        { dx: 0, dy: -1 }, { dx: 1, dy: -1 }, { dx: 1, dy: 0 }, { dx: 1, dy: 1 },
+        { dx: 0, dy: 1 }, { dx: -1, dy: 1 }, { dx: -1, dy: 0 }, { dx: -1, dy: -1 }
       ]
 
+      let nextX = -1, nextY = -1
+
       for (const { dx, dy } of neighbors) {
-        const nx = current.x + dx
-        const ny = current.y + dy
+        const nx = x + dx
+        const ny = y + dy
         if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
           const nidx = ny * width + nx
           if (!visited[nidx] && skeleton[nidx] === 1) {
-            stack.push({ x: nx, y: ny })
+            nextX = nx
+            nextY = ny
+            break
           }
         }
       }
+
+      // 如果没有找到下一个点，可能是走到尽头了
+      if (nextX < 0) break
+
+      x = nextX
+      y = nextY
     }
   }
 
-  // 从起点开始追踪
-  traceFromPoint(startX, startY)
+  // 从起点开始行走
+  walkContour(startX, startY)
 
   // 检查是否有未访问的骨架像素（多个连通区域）
   for (let y = 1; y < height - 1; y++) {
     for (let x = 1; x < width - 1; x++) {
       if (skeleton[y * width + x] === 1 && !visited[y * width + x]) {
-        // 发现新的连通区域，继续追踪
-        traceFromPoint(x, y)
+        walkContour(x, y)
       }
     }
   }
