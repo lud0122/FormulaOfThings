@@ -348,93 +348,125 @@ export function computeOtsuThreshold(image) {
  * @param {ImageData} imageData - 原始图像数据
  * @returns {Array<{x: number, y: number}>} 轮廓点数组
  */
+/**
+ * 从轮廓线框图提取边界（专用算法，避免内部填充问题）
+ * 使用Zhang-Suen骨架细化算法提取单像素宽度轮廓
+ * @param {ImageData} imageData - 原始图像数据
+ * @returns {Array<{x: number, y: number}>} 轮廓点数组
+ */
 export function extractContourFromLineArt(imageData) {
   const { width, height, data } = imageData
   const points = []
 
   // 步骤1：计算自适应阈值
-  // 使用较低的阈值来确保捕捉到细的轮廓线
-  let totalGray = 0
-  let pixelCount = 0
+  const histogram = new Array(256).fill(0)
   for (let i = 0; i < data.length; i += 4) {
-    const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
-    totalGray += gray
-    pixelCount++
+    const gray = Math.floor(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2])
+    histogram[gray]++
   }
-  const meanGray = totalGray / pixelCount
-  // 使用比平均值稍低的阈值，确保能够捕捉到深色轮廓线
-  const threshold = Math.min(meanGray * 0.7, 100)
 
-  console.log(`[extractContourFromLineArt] 平均灰度=${meanGray.toFixed(1)}, 阈值=${threshold}`)
+  let peaks = []
+  for (let i = 1; i < 255; i++) {
+    if (histogram[i] > histogram[i-1] && histogram[i] > histogram[i+1] && histogram[i] > 50) {
+      peaks.push({ value: i, count: histogram[i] })
+    }
+  }
+  peaks.sort((a, b) => b.count - a.count)
 
-  // 步骤2：提取候选轮廓像素（深色像素）
-  const candidatePixels = []
+  let threshold = 100
+  if (peaks.length >= 1) {
+    const darkPeak = peaks.reduce((min, p) => p.value < min.value ? p : min, peaks[0])
+    if (darkPeak.value < 150) {
+      threshold = Math.min(darkPeak.value + 40, 140)
+    }
+  }
+
+  console.log(`[extractContourFromLineArt] 阈值=${threshold}`)
+
+  // 步骤2：二值化
+  const binary = new Uint8Array(width * height)
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4
       const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
-      if (gray < threshold) {
-        candidatePixels.push({ x, y, gray })
-      }
+      if (gray < threshold) binary[y * width + x] = 1
     }
   }
 
-  console.log(`[extractContourFromLineArt] 候选像素数=${candidatePixels.length}`)
+  // 步骤3：Zhang-Suen骨架细化
+  let skeleton = new Uint8Array(binary)
+  let changed = true
+  let iterations = 0
 
-  // 步骤3：从候选像素中只提取边界像素
-  // 创建快速查找表
-  const pixelMap = new Map()
-  for (const p of candidatePixels) {
-    pixelMap.set(`${p.x},${p.y}`, p.gray)
+  const getNeighbors = (s, x, y, w) => {
+    return [
+      s[(y-1) * w + x], s[(y-1) * w + (x+1)],
+      s[y * w + (x+1)], s[(y+1) * w + (x+1)],
+      s[(y+1) * w + x], s[(y+1) * w + (x-1)],
+      s[y * w + (x-1)], s[(y-1) * w + (x-1)]
+    ]
   }
 
-  // 检查是否是边界像素（至少有一个白色邻居的深色像素）
-  const boundaryPixels = []
-  for (const pixel of candidatePixels) {
-    let hasLightNeighbor = false
+  while (changed && iterations < 100) {
+    changed = false
+    iterations++
+    const toRemove = []
 
-    // 检查8个邻居
-    for (let dy = -1; dy <= 1 && !hasLightNeighbor; dy++) {
-      for (let dx = -1; dx <= 1; dx++) {
-        if (dx === 0 && dy === 0) continue
-
-        const nx = pixel.x + dx
-        const ny = pixel.y + dy
-
-        // 边界检查
-        if (nx < 0 || nx >= width || ny < 0 || ny >= height) {
-          hasLightNeighbor = true
-          break
-        }
-
-        // 如果邻居不是深色像素，当前像素是边界
-        if (!pixelMap.has(`${nx},${ny}`)) {
-          hasLightNeighbor = true
-          break
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        if (skeleton[y * width + x] === 0) continue
+        const n = getNeighbors(skeleton, x, y, width)
+        const A = n.reduce((a, b) => a + b, 0)
+        if (A < 2 || A > 6) continue
+        let B = 0
+        for (let i = 0; i < 8; i++) if (n[i] === 0 && n[(i + 1) % 8] === 1) B++
+        if (B !== 1) continue
+        if (n[0] * n[2] * n[4] === 0 && n[2] * n[4] * n[6] === 0) {
+          toRemove.push(y * width + x)
+          changed = true
         }
       }
     }
+    for (const idx of toRemove) skeleton[idx] = 0
+    toRemove.length = 0
 
-    if (hasLightNeighbor) {
-      boundaryPixels.push(pixel)
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        if (skeleton[y * width + x] === 0) continue
+        const n = getNeighbors(skeleton, x, y, width)
+        const A = n.reduce((a, b) => a + b, 0)
+        if (A < 2 || A > 6) continue
+        let B = 0
+        for (let i = 0; i < 8; i++) if (n[i] === 0 && n[(i + 1) % 8] === 1) B++
+        if (B !== 1) continue
+        if (n[0] * n[2] * n[6] === 0 && n[0] * n[4] * n[6] === 0) {
+          toRemove.push(y * width + x)
+          changed = true
+        }
+      }
+    }
+    for (const idx of toRemove) skeleton[idx] = 0
+  }
+
+  let count = 0
+  for (let i = 0; i < skeleton.length; i++) if (skeleton[i] === 1) count++
+  console.log(`[extractContourFromLineArt] 骨架迭代=${iterations}, 像素=${count}`)
+
+  // 步骤4：收集点
+  const skeletonPoints = []
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (skeleton[y * width + x] === 1) skeletonPoints.push({ x, y })
     }
   }
 
-  console.log(`[extractContourFromLineArt] 边界像素数=${boundaryPixels.length}`)
+  if (skeletonPoints.length === 0) return []
 
-  // 步骤4：动态采样
-  if (boundaryPixels.length === 0) {
-    return []
-  }
+  const step = Math.max(1, Math.floor(skeletonPoints.length / 1500))
+  console.log(`[extractContourFromLineArt] 采样步长=${step}`)
 
-  // 目标点数：500-2000
-  const targetPoints = Math.min(Math.max(boundaryPixels.length * 0.2, 500), 2000)
-  const step = Math.max(1, Math.floor(boundaryPixels.length / targetPoints))
-
-  console.log(`[extractContourFromLineArt] 步长=${step}, 目标点数=${targetPoints}`)
-
-  for (let i = 0; i < boundaryPixels.length; i += step) {
-    points.push({ x: boundaryPixels[i].x, y: boundaryPixels[i].y })
+  for (let i = 0; i < skeletonPoints.length; i += step) {
+    points.push({ x: skeletonPoints[i].x, y: skeletonPoints[i].y })
   }
 
   console.log(`[extractContourFromLineArt] 最终点数=${points.length}`)
