@@ -364,31 +364,7 @@ function renderContourPreview() {
   const offsetX = (width - contourWidth * scale) / 2 - minX * scale
   const offsetY = (height - contourHeight * scale) / 2 - minY * scale
 
-  // 绘制轮廓点
-  previewCtx.strokeStyle = '#00d4ff'
-  previewCtx.lineWidth = 2
-  previewCtx.beginPath()
-
-  contourPoints.forEach((point, index) => {
-    const x = point.x * scale + offsetX
-    const y = point.y * scale + offsetY
-
-    if (index === 0) {
-      previewCtx.moveTo(x, y)
-    } else {
-      previewCtx.lineTo(x, y)
-    }
-  })
-
-  // 闭合路径
-  if (contourPoints.length > 0) {
-    const firstPoint = contourPoints[0]
-    previewCtx.lineTo(firstPoint.x * scale + offsetX, firstPoint.y * scale + offsetY)
-  }
-
-  previewCtx.stroke()
-
-  // 绘制轮廓点（小圆点）
+ // 只绘制轮廓点，不绘制连接线
   previewCtx.fillStyle = '#ff6b6b'
   contourPoints.forEach(point => {
     const x = point.x * scale + offsetX
