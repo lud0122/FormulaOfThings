@@ -3,16 +3,16 @@
  * 协调图像处理、傅里叶分析、动画渲染和UI交互
  */
 
-import { detectImageType, calculateHistogram } from '../image-processor/detector.js'
-import { cannyEdgeDetection } from '../image-processor/edge-detector.js'
-import { traceContour, findFirstBlackPixel, computeOtsuThreshold, extractAllBlackPixels, extractContourFromLineArt } from '../image-processor/contour-tracer.js'
-import { repairBrokenContour } from '../image-processor/morphology.js'
-import { dft, pointsToComplex, complexToPoints, magnitudeSpectrum, realDft } from '../fourier-analyzer/dft.js'
-import { selectTermCount } from '../fourier-analyzer/adaptive-selector.js'
-import { generateFormula, generateParameterTable as generateParams } from '../fourier-analyzer/formula-generator.js'
-import { renderEpicycles } from '../renderer/epicycle-renderer.js'
-import { createAnimationController } from '../renderer/animation-controls.js'
-import * as exportPanel from '../ui/export-panel.js'
+import { detectImageType, calculateHistogram } from '../image-processor/detector.js?v=20250401'
+import { cannyEdgeDetection } from '../image-processor/edge-detector.js?v=20250401'
+import { traceContour, findFirstBlackPixel, computeOtsuThreshold, extractAllBlackPixels, extractContourFromLineArt } from '../image-processor/contour-tracer.js?v=20250401'
+import { repairBrokenContour } from '../image-processor/morphology.js?v=20250401'
+import { dft, pointsToComplex, complexToPoints, magnitudeSpectrum, realDft } from '../fourier-analyzer/dft.js?v=20250401'
+import { selectTermCount } from '../fourier-analyzer/adaptive-selector.js?v=20250401'
+import { generateFormula, generateParameterTable as generateParams } from '../fourier-analyzer/formula-generator.js?v=20250401'
+import { renderEpicycles } from '../renderer/epicycle-renderer.js?v=20250401'
+import { createAnimationController } from '../renderer/animation-controls.js?v=20250401'
+import * as exportPanel from '../ui/export-panel.js?v=20250401'
 
 /**
  * 创建应用状态
