@@ -8,33 +8,30 @@
  * 准备渲染参数
  * 计算缩放比例和偏移量，使得图形居中且充分利用Canvas空间
  *
- * @param {Object} coeffs - 傅里叶系数 {a, b, c, d} 或 {a, b}
+ * @param {Object} coeffs - 傅里叶系数 {a, b, c, d}
  * @param {number} canvasWidth - Canvas宽度
  * @param {number} canvasHeight - Canvas高度
  * @returns {Object} 渲染参数 {scale, offsetX, offsetY}
  */
 export function prepareRenderer(coeffs, canvasWidth, canvasHeight) {
-  // 支持 {a,b,c,d} 格式（推荐）和 {a,b} 格式（兼容）
-  const { a, b, c = a, d = b } = coeffs;
+  const { a, b, c, d } = coeffs;
   const N = a.length;
 
   // 采样傅里叶曲线以确定边界
-  const sampleCount = 360; // 采样360个点
+  const sampleCount = 360;
   let minX = Infinity, maxX = -Infinity;
   let minY = Infinity, maxY = -Infinity;
 
   for (let i = 0; i < sampleCount; i++) {
     const t = (i / sampleCount) * 2 * Math.PI;
-    let x = 0, y = 0;
+    let x = a[0] / 2, y = c[0] / 2;  // DC分量
 
-    // 使用正确的傅里叶级数重建公式（独立x,y展开）
-    // x(t) = Σ [a_k*cos(k*t) - b_k*sin(k*t)]
-    // y(t) = Σ [c_k*cos(k*t) - d_k*sin(k*t)]
-    for (let k = 0; k < N; k++) {
+    // 标准傅里叶展开: f(t) = Σ [a_k*cos(k*t) + b_k*sin(k*t)]
+    for (let k = 1; k < N; k++) {
       const cos_kt = Math.cos(k * t);
       const sin_kt = Math.sin(k * t);
-      x += a[k] * cos_kt - b[k] * sin_kt;
-      y += c[k] * cos_kt - d[k] * sin_kt;
+      x += a[k] * cos_kt + b[k] * sin_kt;
+      y += c[k] * cos_kt + d[k] * sin_kt;
     }
 
     minX = Math.min(minX, x);
@@ -46,7 +43,6 @@ export function prepareRenderer(coeffs, canvasWidth, canvasHeight) {
   const contourWidth = maxX - minX;
   const contourHeight = maxY - minY;
 
-  // 处理边界情况：如果轮廓尺寸为0，使用默认缩放
   if (contourWidth === 0 || contourHeight === 0) {
     const scale = Math.min(canvasWidth, canvasHeight) * 0.4;
     const offsetX = canvasWidth / 2;
@@ -54,13 +50,11 @@ export function prepareRenderer(coeffs, canvasWidth, canvasHeight) {
     return { scale, offsetX, offsetY };
   }
 
-  // 使用与预览相同的动态缩放策略（留出10%边距）
-  const padding = 0.05; // 5%边距
+  const padding = 0.05;
   const scaleX = (canvasWidth * (1 - 2 * padding)) / contourWidth;
   const scaleY = (canvasHeight * (1 - 2 * padding)) / contourHeight;
   const scale = Math.min(scaleX, scaleY);
 
-  // Canvas中心作为偏移起点
   const offsetX = canvasWidth / 2;
   const offsetY = canvasHeight / 2;
 
@@ -69,20 +63,24 @@ export function prepareRenderer(coeffs, canvasWidth, canvasHeight) {
 
 /**
  * 计算给定时间t的笔尖位置
- * @param {Object} coeffs - 傅里叶系数
+ * @param {Object} coeffs - 傅里叶系数 {a, b, c, d}
  * @param {number} t - 时间参数
  * @returns {{x: number, y: number}} 笔尖位置（归一化坐标）
  */
 function calculatePenPosition(coeffs, t) {
-  const { a, b, c = a, d = b } = coeffs;
+  const { a, b, c, d } = coeffs;
   const N = a.length;
 
-  let x = 0, y = 0;
-  for (let k = 0; k < N; k++) {
+  // DC分量 (k=0) 只有余弦分量
+  let x = a[0] / 2;
+  let y = c[0] / 2;
+
+  // 标准正弦余弦展开: f(t) = Σ [a_k*cos(k*t) + b_k*sin(k*t)]
+  for (let k = 1; k < N; k++) {
     const cos_kt = Math.cos(k * t);
     const sin_kt = Math.sin(k * t);
-    x += a[k] * cos_kt - b[k] * sin_kt;
-    y += c[k] * cos_kt - d[k] * sin_kt;
+    x += a[k] * cos_kt + b[k] * sin_kt;
+    y += c[k] * cos_kt + d[k] * sin_kt;
   }
 
   return { x, y };

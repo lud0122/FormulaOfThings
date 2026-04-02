@@ -1,269 +1,31 @@
 /**
- * 离散傅里叶变换（DFT）实现
- * 支持复数运算和轮廓点的傅里叶级数展开
- */
-
-/**
- * 复数表示 { re: 实部, im: 虚部 }
- * @typedef {Object} Complex
- * @property {number} re - 实部
- * @property {number} im - 虚部
+ * 离散傅里叶变换（DFT）实现 - 实数信号的正弦余弦展开
  */
 
 /**
  * 创建复数
  * @param {number} re - 实部
  * @param {number} im - 虚部
- * @returns {Complex}
+ * @returns {{re: number, im: number}}
  */
 export function complex(re = 0, im = 0) {
-  return { re, im }
+  return { re, im };
 }
 
 /**
- * 复数加法
- * @param {Complex} a
- * @param {Complex} b
- * @returns {Complex}
- */
-export function add(a, b) {
-  return { re: a.re + b.re, im: a.im + b.im }
-}
-
-/**
- * 复数减法
- * @param {Complex} a
- * @param {Complex} b
- * @returns {Complex}
- */
-export function sub(a, b) {
-  return { re: a.re - b.re, im: a.im - b.im }
-}
-
-/**
- * 复数乘法
- * @param {Complex} a
- * @param {Complex} b
- * @returns {Complex}
- */
-export function mul(a, b) {
-  return {
-    re: a.re * b.re - a.im * b.im,
-    im: a.re * b.im + a.im * b.re
-  }
-}
-
-/**
- * 复数的模（幅度）
- * @param {Complex} z
- * @returns {number}
- */
-export function magnitude(z) {
-  return Math.sqrt(z.re * z.re + z.im * z.im)
-}
-
-/**
- * 复数的相位（角度，-π到π）
- * @param {Complex} z
- * @returns {number}
- */
-export function phase(z) {
-  return Math.atan2(z.im, z.re)
-}
-
-/**
- * 将轮廓点转换为复数序列
- * @param {Array<{x: number, y: number}>} points - 轮廓点数组
- * @returns {Complex[]}
- */
-export function pointsToComplex(points) {
-  return points.map(p => complex(p.x, -p.y)) // y轴翻转，符合图像坐标系
-}
-
-/**
- * 离散傅里叶变换（DFT）
- * @param {Complex[]} signal - 输入信号（复数数组）
- * @returns {Complex[]} 频率系数
- */
-export function dft(signal) {
-  const N = signal.length
-  const coefficients = new Array(N)
-
-  for (let k = 0; k < N; k++) {
-    let sum = complex(0, 0)
-    for (let n = 0; n < N; n++) {
-      const angle = -2 * Math.PI * k * n / N
-      const twiddle = complex(Math.cos(angle), Math.sin(angle))
-      sum = add(sum, mul(signal[n], twiddle))
-    }
-    coefficients[k] = complex(sum.re / N, sum.im / N)
-  }
-
-  return coefficients
-}
-
-/**
- * 逆离散傅里叶变换（IDFT）
- * @param {Complex[]} coefficients - 频率系数
- * @returns {Complex[]} 时域信号
- */
-export function idft(coefficients) {
-  const N = coefficients.length
-  const signal = new Array(N)
-
-  for (let n = 0; n < N; n++) {
-    let sum = complex(0, 0)
-    for (let k = 0; k < N; k++) {
-      const angle = 2 * Math.PI * k * n / N
-      const twiddle = complex(Math.cos(angle), Math.sin(angle))
-      sum = add(sum, mul(coefficients[k], twiddle))
-    }
-    signal[n] = sum
-  }
-
-  return signal
-}
-
-/**
- * 将复数转换回点坐标
- * @param {Complex[]} complexPoints
- * @returns {Array<{x: number, y: number}>}
- */
-export function complexToPoints(complexPoints) {
-  return complexPoints.map(z => ({
-    x: z.re,
-    y: -z.im // y轴翻转回来
-  }))
-}
-
-/**
- * 计算傅里叶系数的幅度谱
- * @param {Complex[]} coefficients
- * @returns {number[]}
- */
-export function magnitudeSpectrum(coefficients) {
-  return coefficients.map(c => magnitude(c))
-}
-
-/**
- * 计算傅里叶系数的相位谱
- * @param {Complex[]} coefficients
- * @returns {number[]}
- */
-export function phaseSpectrum(coefficients) {
-  return coefficients.map(c => phase(c))
-}
-
-/**
- * 获取按幅度排序的系数索引
- * @param {Complex[]} coefficients
- * @returns {Array<{index: number, magnitude: number}>}
- */
-export function getSortedCoefficients(coefficients) {
-  return coefficients
-    .map((c, index) => ({ index, magnitude: magnitude(c) }))
-    .sort((a, b) => b.magnitude - a.magnitude)
-}
-
-/**
- * 计算能量分布（前N个系数的能量占比）
- * @param {Complex[]} coefficients
- * @param {number} n - 前N个系数
- * @returns {number} 能量占比 (0-1)
- */
-export function calculateEnergyRatio(coefficients, n) {
-  const sorted = getSortedCoefficients(coefficients)
-  const totalEnergy = sorted.reduce((sum, c) => sum + c.magnitude * c.magnitude, 0)
-
-  if (totalEnergy === 0) return 0
-
-  const topNEnergy = sorted.slice(0, n).reduce((sum, c) => sum + c.magnitude * c.magnitude, 0)
-  return topNEnergy / totalEnergy
-}
-
-/**
- * 使用指定数量的系数重建轮廓
- * @param {Complex[]} coefficients - 完整的傅里叶系数
- * @param {number} termCount - 使用的项数
- * @param {number} sampleCount - 重采样点数
- * @returns {Array<{x: number, y: number}>}
- */
-export function reconstructWithTerms(coefficients, termCount, sampleCount = 200) {
-  const N = coefficients.length
-  const usedTerms = Math.min(termCount, N)
-
-  // 按幅度排序并选择前usedTerms个系数
-  const sorted = getSortedCoefficients(coefficients)
-  const selectedIndices = new Set(sorted.slice(0, usedTerms).map(c => c.index))
-
-  // 保留选中的系数，其他置为0
-  const truncated = coefficients.map((c, i) => selectedIndices.has(i) ? c : complex(0, 0))
-
-  // 重建信号
-  const reconstructed = []
-  for (let t = 0; t < sampleCount; t++) {
-    const angle = 2 * Math.PI * t / sampleCount
-    let sum = complex(0, 0)
-    for (let k = 0; k < N; k++) {
-      const phase = angle * k
-      const twiddle = complex(Math.cos(phase), Math.sin(phase))
-      sum = add(sum, mul(truncated[k], twiddle))
-    }
-    reconstructed.push(sum)
-  }
-
-  return complexToPoints(reconstructed)
-}
-
-/**
- * 分析轮廓的对称性
- * @param {Complex[]} coefficients
- * @returns {{hasSymmetry: boolean, symmetryScore: number}}
- */
-export function analyzeSymmetry(coefficients) {
-  const N = coefficients.length
-  if (N < 2) return { hasSymmetry: false, symmetryScore: 0 }
-
-  // 检查共轭对称性（实信号的傅里叶变换性质）
-  let symmetryMatches = 0
-  const half = Math.floor(N / 2)
-
-  for (let k = 1; k < half; k++) {
-    const negK = N - k
-    const forward = coefficients[k]
-    const backward = coefficients[negK]
-
-    // 检查是否近似共轭对称
-    const reDiff = Math.abs(forward.re - backward.re)
-    const imDiff = Math.abs(forward.im + backward.im)
-
-    if (reDiff < 1e-6 && imDiff < 1e-6) {
-      symmetryMatches++
-    }
-  }
-
-  const symmetryScore = symmetryMatches / (half - 1)
-  return {
-    hasSymmetry: symmetryScore > 0.9,
-    symmetryScore
-  }
-}
-
-/**
- * 对实数信号做DFT（自定义正弦余弦展开）
+ * 对实数信号做离散傅里叶变换
  * 返回正弦余弦展开系数 {a, b}
- * 对于信号f[n]，展开为：f(t) = Σ [a[k]*cos(k*t) + b[k]*sin(k*t)]
- * 注意：这里使用标准定义 b[k] = -(1/N) * Σ f[n] * sin(2πkn/N)
- * 这样重建时使用：f(t) = Σ [a[k]*cos(k*t) - b[k]*sin(k*t)]
+ * 展开式: f(t) = Σ [a_k*cos(k*t) + b_k*sin(k*t)]
+ * 其中: a_k = (2/N) * Σ f[n]*cos(2πkn/N)  (k>0), a_0 = (1/N)*Σ f[n]
+ *       b_k = (2/N) * Σ f[n]*sin(2πkn/N)
+ * 重建: f(t) = a_0/2 + Σ_{k=1}^{N/2} [a_k*cos(k*t) + b_k*sin(k*t)]
  *
  * @param {number[]} signal - 实数信号数组
- * @returns {{a: number[], b: number[]}} 余弦系数和正弦系数
+ * @returns {{a: number[], b: number[]}} 展开系数
  */
 export function realDft(signal) {
   const N = signal.length
-  if (N === 0) {
-    return { a: [], b: [] }
-  }
+  if (N === 0) return { a: [], b: [] }
 
   const a = new Array(N).fill(0)
   const b = new Array(N).fill(0)
@@ -276,36 +38,237 @@ export function realDft(signal) {
       sumCos += signal[n] * Math.cos(angle)
       sumSin += signal[n] * Math.sin(angle)
     }
-    a[k] = sumCos / N
-    b[k] = -sumSin / N  // 标准定义，保留负号
+
+    // 非零频率使用 2/N 归一化，零频率使用 1/N
+    if (k === 0 || (N % 2 === 0 && k === N / 2)) {
+      a[k] = sumCos / N
+    } else {
+      a[k] = (2 * sumCos) / N
+    }
+    b[k] = (2 * sumSin) / N
   }
 
   return { a, b }
 }
 
 /**
- * 使用{a,b,c,d}格式的系数重建点位置
- * @param {number[]} a - x的余弦系数
- * @param {number[]} b - x的正弦系数
+ * 使用展开系数重建点位置
+ * 公式: f(t) = Σ [a_k*cos(k*t) + b_k*sin(k*t)]
+ * @param {number[]} a - 余弦系数
+ * @param {number[]} b - 正弦系数 (已包含符号)
  * @param {number[]} c - y的余弦系数
  * @param {number[]} d - y的正弦系数
- * @param {number} t - 时间参数(0到2π)
- * @returns {{x: number, y: number}} 重建的点坐标
+ * @param {number} t - 时间参数
+ * @returns {{x: number, y: number}} 重建坐标
  */
 export function reconstructPoint(a, b, c, d, t) {
   const N = a.length
-  let x = 0
-  let y = 0
+  let x = 0, y = 0
 
-  for (let k = 0; k < N; k++) {
+  // DC分量 (k=0) 和 Nyquist (k=N/2) 只有余弦
+  x += a[0] / 2  // DC分量
+  y += c[0] / 2
+
+  for (let k = 1; k < N; k++) {
     const cos_kt = Math.cos(k * t)
     const sin_kt = Math.sin(k * t)
-
-    // x(t) = Σ [a[k]*cos(k*t) - b[k]*sin(k*t)]
-    // y(t) = Σ [c[k]*cos(k*t) - d[k]*sin(k*t)]
-    x += a[k] * cos_kt - b[k] * sin_kt
-    y += c[k] * cos_kt - d[k] * sin_kt
+    x += a[k] * cos_kt + b[k] * sin_kt
+    y += c[k] * cos_kt + d[k] * sin_kt
   }
 
   return { x, y }
+}
+
+/**
+ * 将轮廓点转换为复数序列
+ * @param {Array<{x: number, y: number}>} points
+ * @returns {Array<{re: number, im: number}>}
+ */
+export function pointsToComplex(points) {
+  return points.map(p => ({ re: p.x, im: -p.y }))  // y轴翻转
+}
+
+/**
+ * 复数数组转换回点
+ * @param {Array<{re: number, im: number}>} complex
+ * @returns {Array<{x: number, y: number}>}
+ */
+export function complexToPoints(complex) {
+  return complex.map(c => ({ x: c.re, y: -c.im }))  // y轴翻转回来
+}
+
+/**
+ * 复数加法
+ */
+export function add(a, b) {
+  return { re: a.re + b.re, im: a.im + b.im }
+}
+
+/**
+ * 复数乘法
+ */
+export function mul(a, b) {
+  return {
+    re: a.re * b.re - a.im * b.im,
+    im: a.re * b.im + a.im * b.re
+  }
+}
+
+/**
+ * 逆离散傅里叶变换（IDFT）
+ * @param {Array<{re: number, im: number}>} coefficients
+ * @returns {Array<{re: number, im: number}>}
+ */
+export function idft(coefficients) {
+  const N = coefficients.length;
+  const signal = new Array(N);
+
+  for (let n = 0; n < N; n++) {
+    let sum = { re: 0, im: 0 };
+    for (let k = 0; k < N; k++) {
+      const angle = 2 * Math.PI * k * n / N;
+      const twiddle = { re: Math.cos(angle), im: Math.sin(angle) };
+      sum = add(sum, mul(coefficients[k], twiddle));
+    }
+    signal[n] = sum;
+  }
+
+  return signal;
+}
+
+/**
+ * 标准复数DFT
+ */
+export function dft(signal) {
+  const N = signal.length
+  const coeffs = new Array(N)
+
+  for (let k = 0; k < N; k++) {
+    let sum = { re: 0, im: 0 }
+    for (let n = 0; n < N; n++) {
+      const angle = -2 * Math.PI * k * n / N
+      const twiddle = { re: Math.cos(angle), im: Math.sin(angle) }
+      sum = add(sum, mul(signal[n], twiddle))
+    }
+    coeffs[k] = { re: sum.re / N, im: sum.im / N }
+  }
+
+  return coeffs
+}
+
+/**
+ * 复数减法
+ * @param {{re: number, im: number}} a
+ * @param {{re: number, im: number}} b
+ * @returns {{re: number, im: number}}
+ */
+export function sub(a, b) {
+  return { re: a.re - b.re, im: a.im - b.im };
+}
+
+/**
+ * 复数的模
+ * @param {{re: number, im: number}} z
+ * @returns {number}
+ */
+export function magnitude(z) {
+  return Math.sqrt(z.re * z.re + z.im * z.im);
+}
+
+/**
+ * 复数的相位
+ * @param {{re: number, im: number}} z
+ * @returns {number}
+ */
+export function phase(z) {
+  return Math.atan2(z.im, z.re);
+}
+
+/**
+ * 幅度谱
+ */
+export function magnitudeSpectrum(coefficients) {
+  return coefficients.map(c =>
+    Math.sqrt(c.re * c.re + c.im * c.im)
+  )
+}
+
+/**
+ * 相位谱
+ */
+export function phaseSpectrum(coefficients) {
+  return coefficients.map(c => Math.atan2(c.im, c.re))
+}
+
+/**
+ * 获取按幅度排序的系数
+ */
+export function getSortedCoefficients(coefficients) {
+  return coefficients
+    .map((c, index) => ({
+      index,
+      magnitude: Math.sqrt(c.re * c.re + c.im * c.im)
+    }))
+    .sort((a, b) => b.magnitude - a.magnitude)
+}
+
+/**
+ * 计算能量占比
+ */
+export function calculateEnergyRatio(coefficients, n) {
+  const sorted = getSortedCoefficients(coefficients)
+  const totalEnergy = sorted.reduce((sum, c) => sum + c.magnitude * c.magnitude, 0)
+  if (totalEnergy === 0) return 0
+  const topNEnergy = sorted.slice(0, n).reduce((sum, c) => sum + c.magnitude * c.magnitude, 0)
+  return topNEnergy / totalEnergy
+}
+
+/**
+ * 分析对称性
+ */
+export function analyzeSymmetry(coefficients) {
+  const N = coefficients.length
+  if (N < 2) return { hasSymmetry: false, symmetryScore: 0 }
+
+  let symmetryMatches = 0
+  const half = Math.floor(N / 2)
+
+  for (let k = 1; k < half; k++) {
+    const negK = N - k
+    const forward = coefficients[k]
+    const backward = coefficients[negK]
+    const reDiff = Math.abs(forward.re - backward.re)
+    const imDiff = Math.abs(forward.im + backward.im)
+    if (reDiff < 1e-6 && imDiff < 1e-6) symmetryMatches++
+  }
+
+  return {
+    hasSymmetry: symmetryMatches / (half - 1) > 0.9,
+    symmetryScore: symmetryMatches / (half - 1)
+  }
+}
+
+/**
+ * 使用指定数量系数重建轮廓
+ */
+export function reconstructWithTerms(coefficients, termCount, sampleCount = 200) {
+  const N = coefficients.length
+  const usedTerms = Math.min(termCount, N)
+  const sorted = getSortedCoefficients(coefficients)
+  const selectedIndices = new Set(sorted.slice(0, usedTerms).map(c => c.index))
+  const truncated = coefficients.map((c, i) => selectedIndices.has(i) ? c : { re: 0, im: 0 })
+
+  const reconstructed = []
+  for (let t = 0; t < sampleCount; t++) {
+    const angle = 2 * Math.PI * t / sampleCount
+    let sum = { re: 0, im: 0 }
+    for (let k = 0; k < N; k++) {
+      const phase = angle * k
+      const twiddle = { re: Math.cos(phase), im: Math.sin(phase) }
+      sum = add(sum, mul(truncated[k], twiddle))
+    }
+    reconstructed.push(sum)
+  }
+
+  return complexToPoints(reconstructed)
 }

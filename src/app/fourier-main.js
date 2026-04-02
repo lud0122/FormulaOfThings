@@ -309,20 +309,13 @@ async function performFourierAnalysis() {
   const yCoeffs = realDft(ySignal)
 
   // 3. 构建系数对象 {a, b, c, d}
-  // a, b = x的余弦和正弦系数
-  // c, d = y的余弦和正弦系数
-  // 关键：realDft 返回 b[k] = -(1/N)*Σ f*sin
-  // 重建公式: y = Σ [c*cos(kt) - d*sin(kt)]
-  // 为了让 y 正确重建，需要对 d 取反：
-  // y = Σ [c*cos - (-d_realDft)*sin] = Σ [c*cos + d_realDft*sin]
-  // 但标准傅里叶展开是: f(t) = Σ [a*cos + b_original*sin]
-  // 由于 b_realDft = -b_original，所以 d = -b_realDft = b_original
-  // 最终: y = Σ [c*cos - d*sin] = Σ [c*cos - (-d_realDft)*sin] ✓
+  // realDft 返回标准傅里叶展开系数:
+  // f(t) = a_0/2 + Σ [a_k*cos(k*t) + b_k*sin(k*t)]
   const coeffsObj = {
-    a: xCoeffs.a,
-    b: xCoeffs.b,
-    c: yCoeffs.a,
-    d: yCoeffs.b.map(v => -v)  // 取反，使重建公式正确
+    a: xCoeffs.a,  // x的余弦系数
+    b: xCoeffs.b,  // x的正弦系数
+    c: yCoeffs.a,  // y的余弦系数
+    d: yCoeffs.b   // y的正弦系数
   }
 
   // 4. 保存原始系数（用于重建验证）
