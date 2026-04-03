@@ -7,9 +7,10 @@
  * 根据能量占比选择傅里叶项数
  * @param {Object} coeffs - 傅里叶系数 {a, b, c, d} 或 {a, b}
  * @param {number} energyThreshold - 能量阈值（默认0.95）
+ * @param {number} maxTerms - 最大项数（默认20）
  * @returns {Object} 选择结果 {termCount, energyRatio, selectedIndices, energies}
  */
-export function selectTermCount(coeffs, energyThreshold = 0.95) {
+export function selectTermCount(coeffs, energyThreshold = 0.95, maxTerms = 20) {
   // 支持两种格式：{a, b, c, d} 或 {a, b}
   const { a, b, c = a, d = b } = coeffs;
 
@@ -55,7 +56,7 @@ export function selectTermCount(coeffs, energyThreshold = 0.95) {
     throw new Error('ZERO_TOTAL_ENERGY: 总能量为零');
   }
 
-  // 从最大能量开始累加，直到达到阈值
+  // 从最大能量开始累加，直到达到阈值或最大项数
   let cumulativeEnergy = 0;
   const selectedIndices = [];
 
@@ -64,7 +65,8 @@ export function selectTermCount(coeffs, energyThreshold = 0.95) {
     selectedIndices.push(item.k);
     const ratio = cumulativeEnergy / totalEnergy;
 
-    if (ratio >= energyThreshold) {
+    // 达到阈值或最大项数时停止
+    if (ratio >= energyThreshold || selectedIndices.length >= maxTerms) {
       // 按频率索引排序，保持低频在前
       selectedIndices.sort((a, b) => a - b);
 
@@ -81,12 +83,13 @@ export function selectTermCount(coeffs, energyThreshold = 0.95) {
     }
   }
 
-  // 达到最大项数仍未满足阈值
+  // 达到最大原始系数数量仍未满足阈值
+  selectedIndices.sort((a, b) => a - b);
   return {
-    termCount: N,
-    energyRatio: 1.0,
-    selectedIndices: Array.from({ length: N }, (_, i) => i),
-    energies: energies.map(e => ({
+    termCount: selectedIndices.length,
+    energyRatio: cumulativeEnergy / totalEnergy,
+    selectedIndices,
+    energies: energies.slice(0, selectedIndices.length).map(e => ({
       index: e.k,
       energy: e.energy,
       energyRatio: e.energy / totalEnergy

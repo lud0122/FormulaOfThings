@@ -123,7 +123,24 @@ export function renderEpicycles(ctx, canvasWidth, canvasHeight, coeffs, t, traje
   const penX = offsetX + px * scale;
   const penY = offsetY + py * scale;
 
-  // 不累积轨迹，只显示当前笔尖位置（与左侧预览一致）
+  // 绘制轨迹路径，记录笔尖移动轨迹
+  if (!ctx.__trajectory) {
+    ctx.__trajectory = [];
+  }
+  ctx.__trajectory.push({ x: penX, y: penY });
+
+  // 绘制轮廓轨迹线，使用与背景对比度高的颜色
+  ctx.beginPath();
+  if (ctx.__trajectory.length > 1) {
+    ctx.moveTo(ctx.__trajectory[0].x, ctx.__trajectory[0].y);
+    for (let i = 1; i < ctx.__trajectory.length; i++) {
+      ctx.lineTo(ctx.__trajectory[i].x, ctx.__trajectory[i].y);
+    }
+  }
+  ctx.strokeStyle = '#00d4ff'; // 青色，与深色背景对比度高
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
   // 绘制红色笔尖点（表示当前位置）
   ctx.beginPath();
   ctx.arc(penX, penY, 3, 0, 2 * Math.PI);

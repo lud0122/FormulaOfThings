@@ -230,11 +230,18 @@ export function createAnimationController(canvas, options = {}) {
 
     currentFrame += speed;
 
+    // 绘制完一轮后停止，不循环播放
     if (currentFrame >= totalFrames) {
-      currentFrame = 0;
+      currentFrame = totalFrames;
+      isPlaying = false;
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+      }
       if (options.onComplete) {
         options.onComplete();
       }
+      return;
     }
 
     animationId = requestAnimationFrame(animationLoop);
