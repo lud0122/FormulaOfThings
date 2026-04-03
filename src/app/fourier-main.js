@@ -507,9 +507,14 @@ function renderFrame(t) {
   const { renderCoeffs } = appState
   const { width, height } = mainCanvas
 
+  // 确保轨迹数组存在
+  if (!appState.trajectory) {
+    appState.trajectory = []
+  }
+
   // 渲染轮圆（使用完整的{a,b,c,d}格式系数）
-  // 不再累积轨迹，只显示当前笔尖位置
-  renderEpicycles(mainCtx, width, height, renderCoeffs, t, [])
+  // 传递轨迹数组以累积绘制
+  renderEpicycles(mainCtx, width, height, renderCoeffs, t, appState.trajectory)
 
 }
 

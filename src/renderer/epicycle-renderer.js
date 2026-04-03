@@ -123,18 +123,13 @@ export function renderEpicycles(ctx, canvasWidth, canvasHeight, coeffs, t, traje
   const penX = offsetX + px * scale;
   const penY = offsetY + py * scale;
 
-  // 绘制轨迹路径，记录笔尖移动轨迹
-  if (!ctx.__trajectory) {
-    ctx.__trajectory = [];
-  }
-  ctx.__trajectory.push({ x: penX, y: penY });
-
   // 绘制轮廓轨迹线，使用与背景对比度高的颜色
+  // 只绘制本次动画周期内的轨迹，不累积
   ctx.beginPath();
-  if (ctx.__trajectory.length > 1) {
-    ctx.moveTo(ctx.__trajectory[0].x, ctx.__trajectory[0].y);
-    for (let i = 1; i < ctx.__trajectory.length; i++) {
-      ctx.lineTo(ctx.__trajectory[i].x, ctx.__trajectory[i].y);
+  if (trajectory && trajectory.length > 1) {
+    ctx.moveTo(trajectory[0].x, trajectory[0].y);
+    for (let i = 1; i < trajectory.length; i++) {
+      ctx.lineTo(trajectory[i].x, trajectory[i].y);
     }
   }
   ctx.strokeStyle = '#00d4ff'; // 青色，与深色背景对比度高
