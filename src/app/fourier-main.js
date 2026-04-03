@@ -421,13 +421,9 @@ function displayResults() {
   if (energyRatioEl) energyRatioEl.textContent = `${(energyRatio * 100).toFixed(1)}%`
   if (contourPointsEl) contourPointsEl.textContent = contourPoints.length
 
-  // 2. 生成公式文本（适配公式生成器的输入格式）
-  const coeffsObj = {
-    a: fourierCoeffs.map(c => c.re),
-    b: fourierCoeffs.map(c => c.im),
-    c: fourierCoeffs.map(c => c.re),
-    d: fourierCoeffs.map(c => c.im)
-  }
+  // 2. 生成公式文本（使用正确的{a,b,c,d}系数）
+  // 使用 appState.renderCoeffs 而非复数系数 fourierCoeffs
+  const coeffsObj = appState.renderCoeffs
   const formulaText = generateFormula(coeffsObj)
   if (formulaDisplayEl) {
     formulaDisplayEl.innerHTML = `<pre>${formulaText}</pre>`
@@ -508,11 +504,12 @@ function renderParameterTable(container, params) {
 function renderFrame(t) {
   if (!mainCtx || !mainCanvas || !appState.renderCoeffs) return
 
-  const { renderCoeffs, trajectory } = appState
+  const { renderCoeffs } = appState
   const { width, height } = mainCanvas
 
   // 渲染轮圆（使用完整的{a,b,c,d}格式系数）
-  renderEpicycles(mainCtx, width, height, renderCoeffs, t, trajectory || [])
+  // 不再累积轨迹，只显示当前笔尖位置
+  renderEpicycles(mainCtx, width, height, renderCoeffs, t, [])
 
 }
 

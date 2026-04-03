@@ -88,15 +88,16 @@ function calculatePenPosition(coeffs, t) {
 
 /**
  * 渲染单帧轮圆动画
- * 只绘制红色轮廓轨迹，不显示轮圆可视化
+ * 只绘制红色笔尖点（当前位置），不再累积轨迹线条
+ * 这样只显示单点，与左侧预览的轮廓点风格保持一致
  *
  * @param {CanvasRenderingContext2D} ctx - Canvas 2D上下文
  * @param {number} canvasWidth - Canvas宽度
  * @param {number} canvasHeight - Canvas高度
  * @param {Object} coeffs - 傅里叶系数 {a, b, c, d}
  * @param {number} t - 时间参数（弧度）
- * @param {Array} trajectory - 轨迹点数组（会被修改）
- * @returns {undefined}
+ * @param {Array} trajectory - 轨迹点数组（已废弃，不再使用）
+ * @returns {{penX: number, penY: number}} 笔尖位置
  */
 export function renderEpicycles(ctx, canvasWidth, canvasHeight, coeffs, t, trajectory) {
   // 参数验证：检查系数完整性
@@ -122,22 +123,8 @@ export function renderEpicycles(ctx, canvasWidth, canvasHeight, coeffs, t, traje
   const penX = offsetX + px * scale;
   const penY = offsetY + py * scale;
 
-  // 累积轨迹点（Canvas坐标）
-  trajectory.push({ x: penX, y: penY });
-
-  // 只绘制红色轮廓轨迹线（与预览保持一致）
-  if (trajectory.length > 1) {
-    ctx.beginPath();
-    ctx.moveTo(trajectory[0].x, trajectory[0].y);
-    for (let i = 1; i < trajectory.length; i++) {
-      ctx.lineTo(trajectory[i].x, trajectory[i].y);
-    }
-    ctx.strokeStyle = 'red';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  }
-
-  // 可选：绘制红色笔尖点（表示当前位置）
+  // 不累积轨迹，只显示当前笔尖位置（与左侧预览一致）
+  // 绘制红色笔尖点（表示当前位置）
   ctx.beginPath();
   ctx.arc(penX, penY, 3, 0, 2 * Math.PI);
   ctx.fillStyle = 'red';
