@@ -3,16 +3,16 @@
  * 协调图像处理、傅里叶分析、动画渲染和UI交互
  */
 
-import { detectImageType, calculateHistogram } from '../image-processor/detector.js?v=20250401'
-import { cannyEdgeDetection } from '../image-processor/edge-detector.js?v=20250401'
-import { traceContour, findFirstBlackPixel, computeOtsuThreshold, extractAllBlackPixels, extractContourFromLineArt } from '../image-processor/contour-tracer.js?v=20250401'
-import { repairBrokenContour } from '../image-processor/morphology.js?v=20250401'
-import { dft, pointsToComplex, complexToPoints, magnitudeSpectrum, realDft } from '../fourier-analyzer/dft.js?v=20250401'
-import { selectTermCount } from '../fourier-analyzer/adaptive-selector.js?v=20250401'
-import { generateFormula, generateParameterTable as generateParams } from '../fourier-analyzer/formula-generator.js?v=20250401'
-import { renderEpicycles } from '../renderer/epicycle-renderer.js?v=20250401'
-import { createAnimationController } from '../renderer/animation-controls.js?v=20250401'
-import * as exportPanel from '../ui/export-panel.js?v=20250401'
+import { detectImageType, calculateHistogram } from '../image-processor/detector.js'
+import { cannyEdgeDetection } from '../image-processor/edge-detector.js'
+import { traceContour, findFirstBlackPixel, computeOtsuThreshold, extractAllBlackPixels, extractContourFromLineArt } from '../image-processor/contour-tracer.js'
+import { repairBrokenContour } from '../image-processor/morphology.js'
+import { dft, pointsToComplex, complexToPoints, magnitudeSpectrum, realDft } from '../fourier-analyzer/dft.js'
+import { selectTermCount } from '../fourier-analyzer/adaptive-selector.js'
+import { generateFormula, generateParameterTable as generateParams } from '../fourier-analyzer/formula-generator.js'
+import { renderEpicycles } from '../renderer/epicycle-renderer.js'
+import { createAnimationController } from '../renderer/animation-controls.js'
+import * as exportPanel from '../ui/export-panel.js'
 
 /**
  * 创建应用状态
@@ -300,6 +300,9 @@ async function performFourierAnalysis() {
   // 1. 归一化轮廓点
   const normalizedPoints = normalizeContour(contourPoints)
 
+  // 保存归一化后的点供渲染器使用（确保缩放一致性）
+  appState.normalizedContourPoints = normalizedPoints
+
   // 2. 分别对x和y坐标做实数DFT
   // 实数DFT返回 {a, b}，其中a是余弦系数，b是正弦系数
   const xSignal = normalizedPoints.map(p => p.x)
@@ -329,8 +332,15 @@ async function performFourierAnalysis() {
   appState.termCount = selection.termCount
   appState.energyRatio = selection.energyRatio
 
-  // 6. 保存完整系数供渲染器使用
-  appState.renderCoeffs = coeffsObj
+  // 6. 根据 selectedIndices 过滤系数，只保留选中的项
+  const selectedIndices = new Set(selection.selectedIndices)
+  const filteredCoeffs = {
+    a: coeffsObj.a.map((v, i) => selectedIndices.has(i) ? v : 0),
+    b: coeffsObj.b.map((v, i) => selectedIndices.has(i) ? v : 0),
+    c: coeffsObj.c.map((v, i) => selectedIndices.has(i) ? v : 0),
+    d: coeffsObj.d.map((v, i) => selectedIndices.has(i) ? v : 0)
+  }
+  appState.renderCoeffs = filteredCoeffs
 }
 
 /**
@@ -513,9 +523,9 @@ function renderFrame(t) {
   }
 
   // 渲染轮圆（使用完整的{a,b,c,d}格式系数）
-  // 传递原始轮廓点以确保缩放和偏移与轮廓预览完全一致
+  // 传递归一化后的轮廓点以确保缩放和偏移与轮廓预览完全一致
   renderEpicycles(mainCtx, width, height, renderCoeffs, t, appState.trajectory, {
-    contourPoints: appState.contourPoints
+    contourPoints: appState.normalizedContourPoints || appState.contourPoints
   })
 
 }

@@ -140,8 +140,9 @@ export function renderEpicycles(ctx, canvasWidth, canvasHeight, coeffs, t, traje
     renderOptions.contourPoints
   );
 
-  // Clear canvas
-  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+  // Clear canvas with background color
+  ctx.fillStyle = '#0f1115';
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
   // Calculate current pen position
   const { x: px, y: py } = calculatePenPosition(coeffs, t);

@@ -133,11 +133,13 @@ describe('Epicycle Renderer', () => {
         clearRect: () => {},
         beginPath: () => {},
         arc: () => {},
+      fillRect: () => {},
         moveTo: () => {},
         lineTo: () => {},
         stroke: () => {},
         fill: () => {},
         strokeStyle: '',
+      fillStyle: '',
         fillColor: '',
         lineWidth: 0
       };
@@ -182,9 +184,9 @@ describe('Epicycle Renderer', () => {
         d: [0, 0]
       };
 
-      let clearRectCalled = false;
-      mockCtx.clearRect = (x, y, w, h) => {
-        clearRectCalled = true;
+      let fillRectCalled = false;
+      mockCtx.fillRect = (x, y, w, h) => {
+        fillRectCalled = true;
         assert.strictEqual(x, 0);
         assert.strictEqual(y, 0);
         assert.strictEqual(w, canvasWidth);
@@ -193,7 +195,7 @@ describe('Epicycle Renderer', () => {
 
       renderEpicycles(mockCtx, canvasWidth, canvasHeight, coeffs, 0, trajectory);
 
-      assert.ok(clearRectCalled, 'clearRect should be called');
+      assert.ok(fillRectCalled, 'fillRect should be called');
     });
 
     it('should draw correct number of circles for N coefficients', () => {

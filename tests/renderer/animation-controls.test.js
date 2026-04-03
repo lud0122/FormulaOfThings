@@ -41,6 +41,7 @@ describe('AnimationController', () => {
     // 模拟 Canvas 上下文
     mockCtx = {
       clearRect: () => {},
+    fillRect: () => {},
       beginPath: () => {},
       arc: () => {},
       moveTo: () => {},
