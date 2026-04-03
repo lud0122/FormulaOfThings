@@ -513,8 +513,10 @@ function renderFrame(t) {
   }
 
   // 渲染轮圆（使用完整的{a,b,c,d}格式系数）
-  // 传递轨迹数组以累积绘制
-  renderEpicycles(mainCtx, width, height, renderCoeffs, t, appState.trajectory)
+  // 传递原始轮廓点以确保缩放和偏移与轮廓预览完全一致
+  renderEpicycles(mainCtx, width, height, renderCoeffs, t, appState.trajectory, {
+    contourPoints: appState.contourPoints
+  })
 
 }
 

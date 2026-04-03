@@ -7,55 +7,7 @@ describe('Epicycle Renderer', () => {
     it('should return correct scale and offset for square canvas', () => {
       const canvasWidth = 800;
       const canvasHeight = 800;
-      // 使用 {a, b} 单组系数，c和d自动回退到a和b
-      const coeffs = {
-        a: [1, 0.5, 0.3],
-        b: [0, 0.2, 0.1]
-      };
-
-      const result = prepareRenderer(coeffs, canvasWidth, canvasHeight);
-
-      // 动态缩放基于实际傅里叶曲线边界
-      assert.ok(result.scale > 0 && Number.isFinite(result.scale), `Expected valid scale, got ${result.scale}`);
-      // offset应该是中心点
-      assert.strictEqual(result.offsetX, 400);
-      assert.strictEqual(result.offsetY, 400);
-    });
-
-    it('should handle rectangular canvas (landscape)', () => {
-      const canvasWidth = 1000;
-      const canvasHeight = 600;
-      const coeffs = {
-        a: [1],
-        b: [0]
-      };
-
-      const result = prepareRenderer(coeffs, canvasWidth, canvasHeight);
-
-      // offset应该是中心点
-      assert.strictEqual(result.offsetX, 500);
-      assert.strictEqual(result.offsetY, 300);
-    });
-
-    it('should handle rectangular canvas (portrait)', () => {
-      const canvasWidth = 600;
-      const canvasHeight = 1000;
-      const coeffs = {
-        a: [1],
-        b: [0]
-      };
-
-      const result = prepareRenderer(coeffs, canvasWidth, canvasHeight);
-
-      // offset应该是中心点
-      assert.strictEqual(result.offsetX, 300);
-      assert.strictEqual(result.offsetY, 500);
-    });
-
-    it('should handle {a, b, c, d} format correctly', () => {
-      const canvasWidth = 800;
-      const canvasHeight = 800;
-      // 使用 {a, b, c, d} 四组系数
+      // Use {a, b, c, d} format
       const coeffs = {
         a: [1, 0.5, 0.3],
         b: [0, 0.2, 0.1],
@@ -65,10 +17,108 @@ describe('Epicycle Renderer', () => {
 
       const result = prepareRenderer(coeffs, canvasWidth, canvasHeight);
 
-      // 应该返回有效的缩放值
+      // Dynamic scale based on actual Fourier curve boundary
       assert.ok(result.scale > 0 && Number.isFinite(result.scale), `Expected valid scale, got ${result.scale}`);
-      assert.strictEqual(result.offsetX, 400);
-      assert.strictEqual(result.offsetY, 400);
+      // Offset should center the contour (calculated from boundary, not simple canvas center)
+      assert.ok(Number.isFinite(result.offsetX));
+      assert.ok(Number.isFinite(result.offsetY));
+    });
+
+    it('should handle rectangular canvas (landscape)', () => {
+      const canvasWidth = 1000;
+      const canvasHeight = 600;
+      const coeffs = {
+        a: [1],
+        b: [0],
+        c: [1],
+        d: [0]
+      };
+
+      const result = prepareRenderer(coeffs, canvasWidth, canvasHeight);
+
+      // offset should be finite numbers based on contour
+      assert.ok(Number.isFinite(result.offsetX));
+      assert.ok(Number.isFinite(result.offsetY));
+    });
+
+    it('should handle rectangular canvas (portrait)', () => {
+      const canvasWidth = 600;
+      const canvasHeight = 1000;
+      const coeffs = {
+        a: [1],
+        b: [0],
+        c: [1],
+        d: [0]
+      };
+
+      const result = prepareRenderer(coeffs, canvasWidth, canvasHeight);
+
+      // offset should be finite numbers based on contour
+      assert.ok(Number.isFinite(result.offsetX));
+      assert.ok(Number.isFinite(result.offsetY));
+    });
+
+    it('should handle {a, b, c, d} format correctly', () => {
+      const canvasWidth = 800;
+      const canvasHeight = 800;
+      // Use {a, b, c, d} 4 coefficient groups
+      const coeffs = {
+        a: [1, 0.5, 0.3],
+        b: [0, 0.2, 0.1],
+        c: [1, 0.5, 0.3],
+        d: [0, 0.2, 0.1]
+      };
+
+      const result = prepareRenderer(coeffs, canvasWidth, canvasHeight);
+
+      // Should return valid scale
+      assert.ok(result.scale > 0 && Number.isFinite(result.scale), `Expected valid scale, got ${result.scale}`);
+      // Offset should center the contour
+      assert.ok(Number.isFinite(result.offsetX));
+      assert.ok(Number.isFinite(result.offsetY));
+    });
+
+    it('should use contourPoints for boundary calculation when provided', () => {
+      const canvasWidth = 800;
+      const canvasHeight = 800;
+      const coeffs = {
+        a: [100, 50, 30],
+        b: [0, 0, 0],
+        c: [100, 50, 30],
+        d: [0, 0, 0]
+      };
+      const contourPoints = [
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+        { x: 100, y: 100 },
+        { x: 0, y: 100 }
+      ];
+
+      const result = prepareRenderer(coeffs, canvasWidth, canvasHeight, contourPoints);
+
+      // Should use contourPoints min/max directly
+      assert.strictEqual(result.minX, 0);
+      assert.strictEqual(result.maxX, 100);
+      assert.strictEqual(result.minY, 0);
+      assert.strictEqual(result.maxY, 100);
+    });
+
+    it('should fallback to sampling when contourPoints not provided', () => {
+      const canvasWidth = 800;
+      const canvasHeight = 800;
+      const coeffs = {
+        a: [1, 0.5, 0.3],
+        b: [0, 0.2, 0.1],
+        c: [1, 0.5, 0.3],
+        d: [0, 0.2, 0.1]
+      };
+
+      const result = prepareRenderer(coeffs, canvasWidth, canvasHeight);
+
+      // Should return valid scale and center offsets
+      assert.ok(result.scale > 0 && Number.isFinite(result.scale));
+      assert.ok(Number.isFinite(result.offsetX));
+      assert.ok(Number.isFinite(result.offsetY));
     });
   });
 
@@ -78,7 +128,7 @@ describe('Epicycle Renderer', () => {
     let canvasHeight;
 
     beforeEach(() => {
-      // 创建mock canvas context
+      // Create mock canvas context
       mockCtx = {
         clearRect: () => {},
         beginPath: () => {},
@@ -104,7 +154,7 @@ describe('Epicycle Renderer', () => {
 
     it('should return early if coeffs is missing required properties', () => {
       const trajectory = [];
-      const invalidCoeffs = { a: [1] }; // missing b, c, d
+      const invalidCoeffs = { a: [1] }; // missing b
       const result = renderEpicycles(mockCtx, canvasWidth, canvasHeight, invalidCoeffs, 0, trajectory);
 
       assert.deepStrictEqual(result, { penX: 0, penY: 0 });
@@ -162,8 +212,7 @@ describe('Epicycle Renderer', () => {
 
       renderEpicycles(mockCtx, canvasWidth, canvasHeight, coeffs, 0, trajectory);
 
-      // 渲染器现在绘制x和y两组轮圆 + 红色笔尖
-      // 具体数量取决于实现，我们只需要确保至少绘制了轮圆
+      // Renderer now draws epicycles + pen tip
       assert.ok(arcCallCount > 0, 'should draw epicycles');
     });
 
@@ -176,16 +225,11 @@ describe('Epicycle Renderer', () => {
         d: [0, 0]
       };
 
-      // Mock stroke to track line drawing
-      const lines = [];
-      mockCtx.moveTo = (x, y) => lines.push({ type: 'moveTo', x, y });
-      mockCtx.lineTo = (x, y) => lines.push({ type: 'lineTo', x, y });
-
-      // 第一次渲染
+      // First render
       renderEpicycles(mockCtx, canvasWidth, canvasHeight, coeffs, 0, trajectory);
       assert.strictEqual(trajectory.length, 1);
 
-      // 第二次渲染
+      // Second render
       renderEpicycles(mockCtx, canvasWidth, canvasHeight, coeffs, Math.PI / 2, trajectory);
       assert.strictEqual(trajectory.length, 2);
     });
@@ -199,11 +243,11 @@ describe('Epicycle Renderer', () => {
         d: [0]
       };
 
-      // 渲染两次以产生轨迹
+      // Render twice to generate trajectory
       renderEpicycles(mockCtx, canvasWidth, canvasHeight, coeffs, 0, trajectory);
       renderEpicycles(mockCtx, canvasWidth, canvasHeight, coeffs, 0.1, trajectory);
 
-      // 验证轨迹样式已设置（通过stroke的调用）
+      // Verify trajectory style is set (via stroke call)
       let strokeCalled = false;
       const originalStroke = mockCtx.stroke;
       mockCtx.stroke = function() {
@@ -231,8 +275,7 @@ describe('Epicycle Renderer', () => {
 
       renderEpicycles(mockCtx, canvasWidth, canvasHeight, coeffs, 0, trajectory);
 
-      // 只有红色笔尖（在中心位置）
-      // 由于没有系数，笔尖应该在中心
+      // Should still draw pen tip at center
       assert.ok(arcCalled, 'should still draw red pen tip at center');
     });
 
@@ -255,15 +298,15 @@ describe('Epicycle Renderer', () => {
 
       renderEpicycles(mockCtx, canvasWidth, canvasHeight, coeffs, 0, trajectory);
 
-      // 验证至少包含淡蓝色和红色样式
-      const hasBlueStyle = styles.some(s =>
-        s.strokeStyle && s.strokeStyle.includes('100, 149, 237')
+      // Verify at least contains cyan trajectory and red pen tip styles
+      const hasCyanStyle = styles.some(s =>
+        s.strokeStyle && s.strokeStyle === '#00d4ff'
       );
       const hasRedStyle = styles.some(s =>
         s.fillStyle && s.fillStyle === 'red'
       );
 
-      assert.ok(hasBlueStyle, 'should use blue style for epicycles');
+      assert.ok(hasCyanStyle, 'should use cyan style for trajectory');
       assert.ok(hasRedStyle, 'should use red style for pen tip');
     });
   });

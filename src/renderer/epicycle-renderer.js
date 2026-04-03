@@ -8,36 +8,51 @@
  * 准备渲染参数
  * 计算缩放比例和偏移量，使得图形居中且充分利用Canvas空间
  *
+ * 使用原始轮廓点的min/max作为边界，确保与轮廓预览完全一致
+ *
  * @param {Object} coeffs - 傅里叶系数 {a, b, c, d}
  * @param {number} canvasWidth - Canvas宽度
  * @param {number} canvasHeight - Canvas高度
- * @returns {Object} 渲染参数 {scale, offsetX, offsetY}
+ * @param {Array<{x: number, y: number}>} contourPoints - 原始轮廓点（可选，用于精确边界计算）
+ * @returns {Object} 渲染参数 {scale, offsetX, offsetY, minX, maxX, minY, maxY}
  */
-export function prepareRenderer(coeffs, canvasWidth, canvasHeight) {
-  const { a, b, c, d } = coeffs;
+export function prepareRenderer(coeffs, canvasWidth, canvasHeight, contourPoints = null) {
+  const { a, b, c = a, d = b } = coeffs;
   const N = a.length;
 
-  // 采样傅里叶曲线以确定边界
-  const sampleCount = 360;
-  let minX = Infinity, maxX = -Infinity;
-  let minY = Infinity, maxY = -Infinity;
+  let minX, maxX, minY, maxY;
 
-  for (let i = 0; i < sampleCount; i++) {
-    const t = (i / sampleCount) * 2 * Math.PI;
-    let x = a[0] / 2, y = c[0] / 2;  // DC分量
+  if (contourPoints && contourPoints.length > 0) {
+    // Use original contour points' min/max for exact boundary matching
+    minX = Math.min(...contourPoints.map(p => p.x));
+    maxX = Math.max(...contourPoints.map(p => p.x));
+    minY = Math.min(...contourPoints.map(p => p.y));
+    maxY = Math.max(...contourPoints.map(p => p.y));
+  } else {
+    // Fallback: sample Fourier curve to determine boundaries
+    const sampleCount = 360;
+    minX = Infinity; maxX = -Infinity;
+    minY = Infinity; maxY = -Infinity;
 
-    // 标准傅里叶展开: f(t) = Σ [a_k*cos(k*t) + b_k*sin(k*t)]
-    for (let k = 1; k < N; k++) {
-      const cos_kt = Math.cos(k * t);
-      const sin_kt = Math.sin(k * t);
-      x += a[k] * cos_kt + b[k] * sin_kt;
-      y += c[k] * cos_kt + d[k] * sin_kt;
+    for (let i = 0; i < sampleCount; i++) {
+      const t = (i / sampleCount) * 2 * Math.PI;
+      const dcX = a.length > 0 ? a[0] : 0;
+      const dcY = c.length > 0 ? c[0] : 0;
+      let x = dcX / 2, y = dcY / 2; // DC component
+
+      // Standard Fourier expansion: f(t) = Σ [a_k*cos(k*t) + b_k*sin(k*t)]
+      for (let k = 1; k < N; k++) {
+        const cos_kt = Math.cos(k * t);
+        const sin_kt = Math.sin(k * t);
+        x += a[k] * cos_kt + b[k] * sin_kt;
+        y += c[k] * cos_kt + d[k] * sin_kt;
+      }
+
+      minX = Math.min(minX, x);
+      maxX = Math.max(maxX, x);
+      minY = Math.min(minY, y);
+      maxY = Math.max(maxY, y);
     }
-
-    minX = Math.min(minX, x);
-    maxX = Math.max(maxX, x);
-    minY = Math.min(minY, y);
-    maxY = Math.max(maxY, y);
   }
 
   const contourWidth = maxX - minX;
@@ -47,7 +62,7 @@ export function prepareRenderer(coeffs, canvasWidth, canvasHeight) {
     const scale = Math.min(canvasWidth, canvasHeight) * 0.4;
     const offsetX = canvasWidth / 2;
     const offsetY = canvasHeight / 2;
-    return { scale, offsetX, offsetY };
+    return { scale, offsetX, offsetY, minX: 0, maxX: 0, minY: 0, maxY: 0 };
   }
 
   const padding = 0.05;
@@ -55,10 +70,13 @@ export function prepareRenderer(coeffs, canvasWidth, canvasHeight) {
   const scaleY = (canvasHeight * (1 - 2 * padding)) / contourHeight;
   const scale = Math.min(scaleX, scaleY);
 
-  const offsetX = canvasWidth / 2;
-  const offsetY = canvasHeight / 2;
+  // Calculate offsets to center the contour
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+  const offsetX = canvasWidth / 2 - centerX * scale;
+  const offsetY = canvasHeight / 2 - centerY * scale;
 
-  return { scale, offsetX, offsetY };
+  return { scale, offsetX, offsetY, minX, maxX, minY, maxY };
 }
 
 /**
@@ -71,11 +89,11 @@ function calculatePenPosition(coeffs, t) {
   const { a, b, c, d } = coeffs;
   const N = a.length;
 
-  // DC分量 (k=0) 只有余弦分量
+  // DC component (k=0) only has cosine component
   let x = a[0] / 2;
   let y = c[0] / 2;
 
-  // 标准正弦余弦展开: f(t) = Σ [a_k*cos(k*t) + b_k*sin(k*t)]
+  // Standard sine-cosine expansion: f(t) = Σ [a_k*cos(k*t) + b_k*sin(k*t)]
   for (let k = 1; k < N; k++) {
     const cos_kt = Math.cos(k * t);
     const sin_kt = Math.sin(k * t);
@@ -97,39 +115,46 @@ function calculatePenPosition(coeffs, t) {
  * @param {Object} coeffs - 傅里叶系数 {a, b, c, d}
  * @param {number} t - 时间参数（弧度）
  * @param {Array} trajectory - 轨迹点数组（已废弃，不再使用）
+ * @param {Object} renderOptions - 渲染选项
+ * @param {Array<{x: number, y: number}>} renderOptions.contourPoints - 原始轮廓点（用于精确边界计算）
  * @returns {{penX: number, penY: number}} 笔尖位置
  */
-export function renderEpicycles(ctx, canvasWidth, canvasHeight, coeffs, t, trajectory) {
-  // 参数验证：检查系数完整性
+export function renderEpicycles(ctx, canvasWidth, canvasHeight, coeffs, t, trajectory, renderOptions = {}) {
+  // Parameter validation: check coefficient integrity
   if (!coeffs || !coeffs.a || !coeffs.b) {
     console.error('Invalid coefficients');
     return { penX: 0, penY: 0 };
   }
 
-  // 参数验证：检查Canvas上下文有效性
+  // Parameter validation: check Canvas context validity
   if (!ctx || typeof ctx.clearRect !== 'function') {
     console.error('Invalid Canvas context');
     return { penX: 0, penY: 0 };
   }
 
-  // 准备渲染参数
-  const { scale, offsetX, offsetY } = prepareRenderer(coeffs, canvasWidth, canvasHeight);
+  // Prepare rendering parameters with contour points
+  const { scale, offsetX, offsetY } = prepareRenderer(
+    coeffs,
+    canvasWidth,
+    canvasHeight,
+    renderOptions.contourPoints
+  );
 
-  // 清空画布
+  // Clear canvas
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-  // 计算当前笔尖位置
+  // Calculate current pen position
   const { x: px, y: py } = calculatePenPosition(coeffs, t);
   const penX = offsetX + px * scale;
   const penY = offsetY + py * scale;
 
-  // 将当前点添加到轨迹数组
+  // Add current point to trajectory array
   if (trajectory) {
     trajectory.push({ x: penX, y: penY });
   }
 
-  // 绘制轮廓轨迹线，使用与背景对比度高的颜色
-  // 只绘制本次动画周期内的轨迹，不累积
+  // Draw contour trajectory line with high contrast color
+  // Only draw trajectory within current animation cycle
   ctx.beginPath();
   if (trajectory && trajectory.length > 1) {
     ctx.moveTo(trajectory[0].x, trajectory[0].y);
@@ -137,16 +162,16 @@ export function renderEpicycles(ctx, canvasWidth, canvasHeight, coeffs, t, traje
       ctx.lineTo(trajectory[i].x, trajectory[i].y);
     }
   }
-  ctx.strokeStyle = '#00d4ff'; // 青色，与深色背景对比度高
+  ctx.strokeStyle = '#00d4ff'; // Cyan color for high contrast with dark background
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  // 绘制红色笔尖点（表示当前位置）
+  // Draw red pen tip point (indicating current position)
   ctx.beginPath();
   ctx.arc(penX, penY, 3, 0, 2 * Math.PI);
   ctx.fillStyle = 'red';
   ctx.fill();
 
-  // 返回笔尖位置（供外部使用）
+  // Return pen position (for external use)
   return { penX, penY };
 }
