@@ -1,11 +1,11 @@
 /**
- * 离散傅里叶变换（DFT）实现 - 实数信号的正弦余弦展开
+ * Discrete Fourier Transform (DFT) implementation - Real signal sine-cosine expansion
  */
 
 /**
- * 创建复数
- * @param {number} re - 实部
- * @param {number} im - 虚部
+ * Create a complex number
+ * @param {number} re - Real part
+ * @param {number} im - Imaginary part
  * @returns {{re: number, im: number}}
  */
 export function complex(re = 0, im = 0) {
@@ -13,15 +13,15 @@ export function complex(re = 0, im = 0) {
 }
 
 /**
- * 对实数信号做离散傅里叶变换
- * 返回正弦余弦展开系数 {a, b}
- * 展开式: f(t) = Σ [a_k*cos(k*t) + b_k*sin(k*t)]
- * 其中: a_k = (2/N) * Σ f[n]*cos(2πkn/N)  (k>0), a_0 = (1/N)*Σ f[n]
- *       b_k = (2/N) * Σ f[n]*sin(2πkn/N)
- * 重建: f(t) = a_0/2 + Σ_{k=1}^{N/2} [a_k*cos(k*t) + b_k*sin(k*t)]
+ * Perform DFT on real signal
+ * Returns sine-cosine expansion coefficients {a, b}
+ * Expansion: f(t) = Σ [a_k*cos(k*t) + b_k*sin(k*t)]
+ * Where: a_k = (2/N) * Σ f[n]*cos(2πkn/N) (k>0), a_0 = (1/N)*Σ f[n]
+ * b_k = (2/N) * Σ f[n]*sin(2πkn/N)
+ * Reconstruction: f(t) = a_0/2 + Σ_{k=1}^{N/2} [a_k*cos(k*t) + b_k*sin(k*t)]
  *
- * @param {number[]} signal - 实数信号数组
- * @returns {{a: number[], b: number[]}} 展开系数
+ * @param {number[]} signal - Real signal array
+ * @returns {{a: number[], b: number[]}} Expansion coefficients
  */
 export function realDft(signal) {
   const N = signal.length
@@ -39,7 +39,7 @@ export function realDft(signal) {
       sumSin += signal[n] * Math.sin(angle)
     }
 
-    // 非零频率使用 2/N 归一化，零频率使用 1/N
+    // Non-zero frequencies use 2/N normalization, zero frequency uses 1/N
     if (k === 0 || (N % 2 === 0 && k === N / 2)) {
       a[k] = sumCos / N
     } else {
@@ -52,23 +52,25 @@ export function realDft(signal) {
 }
 
 /**
- * 使用展开系数重建点位置
- * 公式: f(t) = Σ [a_k*cos(k*t) + b_k*sin(k*t)]
- * @param {number[]} a - 余弦系数
- * @param {number[]} b - 正弦系数 (已包含符号)
- * @param {number[]} c - y的余弦系数
- * @param {number[]} d - y的正弦系数
- * @param {number} t - 时间参数
- * @returns {{x: number, y: number}} 重建坐标
+ * Reconstruct point position using expansion coefficients
+ * Formula: f(t) = Σ [a_k*cos(k*t) + b_k*sin(k*t)]
+ * @param {number[]} a - Cosine coefficients
+ * @param {number[]} b - Sine coefficients (includes sign)
+ * @param {number[]} c - Cosine coefficients for y
+ * @param {number[]} d - Sine coefficients for y
+ * @param {number} t - Time parameter
+ * @returns {{x: number, y: number}} Reconstructed coordinates
  */
 export function reconstructPoint(a, b, c, d, t) {
   const N = a.length
   let x = 0, y = 0
 
-  // DC分量 (k=0) 和 Nyquist (k=N/2) 只有余弦
-  x += a[0] / 2  // DC分量
+  // DC component (k=0) and Nyquist (k=N/2) only have cosine
+  // For realDft output with 1/N for DC and 2/N for others, divide DC by 2
+  x += a[0] / 2
   y += c[0] / 2
 
+  // Sum for k=1 to N-1 using symmetry property for real signals
   for (let k = 1; k < N; k++) {
     const cos_kt = Math.cos(k * t)
     const sin_kt = Math.sin(k * t)
@@ -80,32 +82,32 @@ export function reconstructPoint(a, b, c, d, t) {
 }
 
 /**
- * 将轮廓点转换为复数序列
+ * Convert contour points to complex sequence
  * @param {Array<{x: number, y: number}>} points
  * @returns {Array<{re: number, im: number}>}
  */
 export function pointsToComplex(points) {
-  return points.map(p => ({ re: p.x, im: -p.y }))  // y轴翻转
+  return points.map(p => ({ re: p.x, im: -p.y })) // Y-axis flip
 }
 
 /**
- * 复数数组转换回点
+ * Convert complex array back to points
  * @param {Array<{re: number, im: number}>} complex
  * @returns {Array<{x: number, y: number}>}
  */
 export function complexToPoints(complex) {
-  return complex.map(c => ({ x: c.re, y: -c.im }))  // y轴翻转回来
+  return complex.map(c => ({ x: c.re, y: -c.im })) // Y-axis flip back
 }
 
 /**
- * 复数加法
+ * Complex addition
  */
 export function add(a, b) {
   return { re: a.re + b.re, im: a.im + b.im }
 }
 
 /**
- * 复数乘法
+ * Complex multiplication
  */
 export function mul(a, b) {
   return {
@@ -115,7 +117,7 @@ export function mul(a, b) {
 }
 
 /**
- * 逆离散傅里叶变换（IDFT）
+ * Inverse Discrete Fourier Transform (IDFT)
  * @param {Array<{re: number, im: number}>} coefficients
  * @returns {Array<{re: number, im: number}>}
  */
@@ -137,7 +139,7 @@ export function idft(coefficients) {
 }
 
 /**
- * 标准复数DFT
+ * Standard complex DFT
  */
 export function dft(signal) {
   const N = signal.length
@@ -157,7 +159,7 @@ export function dft(signal) {
 }
 
 /**
- * 复数减法
+ * Complex subtraction
  * @param {{re: number, im: number}} a
  * @param {{re: number, im: number}} b
  * @returns {{re: number, im: number}}
@@ -167,7 +169,7 @@ export function sub(a, b) {
 }
 
 /**
- * 复数的模
+ * Complex magnitude
  * @param {{re: number, im: number}} z
  * @returns {number}
  */
@@ -176,7 +178,7 @@ export function magnitude(z) {
 }
 
 /**
- * 复数的相位
+ * Complex phase
  * @param {{re: number, im: number}} z
  * @returns {number}
  */
@@ -185,7 +187,7 @@ export function phase(z) {
 }
 
 /**
- * 幅度谱
+ * Magnitude spectrum
  */
 export function magnitudeSpectrum(coefficients) {
   return coefficients.map(c =>
@@ -194,14 +196,14 @@ export function magnitudeSpectrum(coefficients) {
 }
 
 /**
- * 相位谱
+ * Phase spectrum
  */
 export function phaseSpectrum(coefficients) {
   return coefficients.map(c => Math.atan2(c.im, c.re))
 }
 
 /**
- * 获取按幅度排序的系数
+ * Get coefficients sorted by magnitude
  */
 export function getSortedCoefficients(coefficients) {
   return coefficients
@@ -213,7 +215,7 @@ export function getSortedCoefficients(coefficients) {
 }
 
 /**
- * 计算能量占比
+ * Calculate energy ratio
  */
 export function calculateEnergyRatio(coefficients, n) {
   const sorted = getSortedCoefficients(coefficients)
@@ -224,7 +226,7 @@ export function calculateEnergyRatio(coefficients, n) {
 }
 
 /**
- * 分析对称性
+ * Analyze symmetry
  */
 export function analyzeSymmetry(coefficients) {
   const N = coefficients.length
@@ -249,7 +251,7 @@ export function analyzeSymmetry(coefficients) {
 }
 
 /**
- * 使用指定数量系数重建轮廓
+ * Reconstruct contour using specified number of coefficients
  */
 export function reconstructWithTerms(coefficients, termCount, sampleCount = 200) {
   const N = coefficients.length
